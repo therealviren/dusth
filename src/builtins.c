@@ -1,6 +1,7 @@
 #include "builtins.h"
 #include "utils.h"
 #include "parser.h"
+#include "env.h"
 #include "interpreter.h"
 #include <stdlib.h>
 #include <string.h>
