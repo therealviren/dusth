@@ -13,7 +13,13 @@
 - **Error Reporting**: Provides clear and precise runtime error messages for invalid operations, undefined identifiers, and function calls.
 - **Interactive Execution**: Supports a REPL environment for testing and iterative development.
 
-## Getting Started
+# Download Dusth
+wget https://github.com/therealviren/dusth/archive/refs/heads/main.zip -O dusth-main.zip
+unzip dusth-main.zip
+cd dusth-main
 
-   ```bash
-   ./install.sh
+# Install
+./install.sh
+
+# Run Dusth
+dusth
