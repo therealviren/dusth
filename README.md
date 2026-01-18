@@ -23,6 +23,7 @@ unzip dusth-main.zip
 cd dusth-main
 
 # Install
+chmod +x install.sh
 ./install.sh
 
 # Run Dusth
