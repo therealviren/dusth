@@ -318,6 +318,7 @@ static Node* parse_stmt() {
     Node* node = NULL;
     if (match_keyword("let")) {
         node = new_node(NODE_LET);
+        skip_whitespace();
         const char* start = parser.current;
         while (isalnum(peek())||peek()=='_') advance();
         node->text = safe_strdup(start, parser.current-start);
