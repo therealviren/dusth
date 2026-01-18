@@ -37,6 +37,7 @@ Env* global_env(void) {
     return g_env;
 }
 
+int execute_program(Node* program, Env* env);
 int interpret_file(const char* path, Env* env) {
     if (!path || !env) return 0;
     char* src = read_file_to_string(path);
@@ -45,8 +46,9 @@ int interpret_file(const char* path, Env* env) {
     free(src);
     if (!program) return 0;
     register_symbols_from_ast(program, env);
+    int exec_result = execute_program(program, env);
     free_node(program);
-    return 1;
+    return exec_result == 0 ? 1 : 0;
 }
 
 static void register_symbols_from_ast(Node* ast, Env* env) {
