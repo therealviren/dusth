@@ -13,6 +13,8 @@
 - **Error Reporting**: Provides clear and precise runtime error messages for invalid operations, undefined identifiers, and function calls.
 - **Interactive Execution**: Supports a REPL environment for testing and iterative development.
 
+## Getting started
+
 ``` bash
 
 # Download Dusth
