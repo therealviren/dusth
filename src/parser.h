@@ -21,7 +21,8 @@ typedef enum {
     NODE_ASSIGN,
     NODE_EXTERN,
     NODE_STRING,
-    NODE_ARRAY
+    NODE_ARRAY,
+    NODE_IMPORT
 } NodeType;
 
 typedef struct Node Node;

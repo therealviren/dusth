@@ -37,10 +37,9 @@ static Node* parse_term();
 static Node* parse_comparison();
 static Node* parse_function();
 static Node* parse_extern();
+static Node* parse_import();
 
-static void handle_interrupt(int sig) {
-    exit(0);
-}
+static void handle_interrupt(int sig) { (void)sig; exit(0); }
 
 static void error(const char* message) {
     fprintf(stderr, "Parse Error: %s\n", message);
@@ -95,23 +94,19 @@ void free_node(Node* n) {
     free(n);
 }
 
-static char peek() {
-    return *parser.current;
-}
+static char peek() { return *parser.current; }
 
 static char advance() {
     if (is_at_end()) return '\0';
     return *parser.current++;
 }
 
-static bool is_at_end() {
-    return *parser.current == '\0';
-}
+static bool is_at_end() { return *parser.current == '\0'; }
 
 static void skip_whitespace() {
     for (;;) {
         char c = peek();
-        if (isspace(c)) advance();
+        if (isspace((unsigned char)c)) advance();
         else if (c == '/' && parser.current[1] == '/') {
             while (peek() != '\n' && !is_at_end()) advance();
         } else break;
@@ -122,7 +117,7 @@ static bool check(const char* keyword) {
     size_t len = strlen(keyword);
     if (strncmp(parser.current, keyword, len) == 0) {
         char after = parser.current[len];
-        return !isalnum(after) && after != '_';
+        return !isalnum((unsigned char)after) && after != '_';
     }
     return false;
 }
@@ -160,8 +155,7 @@ Node* node_clone(Node* n){
     c->children = NULL;
     if(n->childc){
         c->children = malloc(sizeof(Node*) * n->childc);
-        for(size_t i = 0; i < n->childc; i++)
-            c->children[i] = node_clone(n->children[i]);
+        for(size_t i = 0; i < n->childc; i++) c->children[i] = node_clone(n->children[i]);
     }
     return c;
 }
@@ -179,16 +173,16 @@ static Node* parse_primary() {
         expect_char('"', "Expected closing '\"'");
         return node;
     }
-    if (isdigit(c)) {
+    if (isdigit((unsigned char)c)) {
         const char* start = parser.current;
-        while (isdigit(peek()) || peek() == '.') advance();
+        while (isdigit((unsigned char)peek()) || peek() == '.') advance();
         Node* node = new_node(NODE_LITERAL);
         node->num = strtod(start, NULL);
         return node;
     }
-    if (isalpha(c) || c == '_') {
+    if (isalpha((unsigned char)c) || c == '_') {
         const char* start = parser.current;
-        while (isalnum(peek()) || peek() == '_') advance();
+        while (isalnum((unsigned char)peek()) || peek() == '_') advance();
         char* id = safe_strdup(start, parser.current - start);
         skip_whitespace();
         if (peek() == '(') {
@@ -320,15 +314,17 @@ static Node* parse_stmt() {
         node = new_node(NODE_LET);
         skip_whitespace();
         const char* start = parser.current;
-        while (isalnum(peek())||peek()=='_') advance();
+        while (isalnum((unsigned char)peek())||peek()=='_') advance();
+        if (start == parser.current) error("Expected variable name after let");
         node->text = safe_strdup(start, parser.current-start);
+        skip_whitespace();
         expect_char('=',"Expected '=' after variable name");
         add_child(node,parse_expr());
     } else {
         Node* expr = parse_expr();
-        if (expr){
+        if (expr) {
             node = new_node(NODE_EXPR_STMT);
-            add_child(node,expr);
+            add_child(node, expr);
         }
     }
     skip_whitespace();
@@ -339,59 +335,81 @@ static Node* parse_stmt() {
 static Node* parse_function() {
     skip_whitespace();
     Node* node = new_node(NODE_FUNC);
-
     const char* start = parser.current;
-    while (isalnum(peek()) || peek() == '_') advance();
+    while (isalnum((unsigned char)peek()) || peek() == '_') advance();
     if (start == parser.current) error("Function must have a name");
     node->text = safe_strdup(start, parser.current - start);
-
     skip_whitespace();
     expect_char('(', "Function parameters must start with '('");
-
     if (peek() != ')') {
         do {
             skip_whitespace();
             const char* arg_start = parser.current;
-            while (isalnum(peek()) || peek() == '_') advance();
+            while (isalnum((unsigned char)peek()) || peek() == '_') advance();
+            if (arg_start == parser.current) error("Function parameter name expected");
             Node* arg = new_node(NODE_IDENT);
             arg->text = safe_strdup(arg_start, parser.current - arg_start);
             add_child(node, arg);
         } while(match_char(','));
     }
-
     expect_char(')', "Function parameters must end with ')'");
-
     skip_whitespace();
     Node* body = parse_block();
     add_child(node, body);
-
     return node;
 }
 
 static Node* parse_extern() {
-    Node* node=new_node(NODE_EXTERN);
-    const char* start=parser.current;
-    while(isalnum(peek())||peek()=='_') advance();
-    node->text=safe_strdup(start,parser.current-start);
-    expect_char('(',"Extern parameters must start with '('");
-    while(peek()!=')'&&!is_at_end()) advance();
-    expect_char(')',"Extern parameters must end with ')'");
+    skip_whitespace();
+    Node* node = new_node(NODE_EXTERN);
+    const char* start = parser.current;
+    while (isalnum((unsigned char)peek())||peek()=='_') advance();
+    if (start == parser.current) error("Extern must have a name");
+    node->text = safe_strdup(start, parser.current - start);
+    skip_whitespace();
+    expect_char('(', "Extern parameters must start with '('");
+    if (peek() != ')') {
+        do {
+            skip_whitespace();
+            const char* arg_start = parser.current;
+            while (isalnum((unsigned char)peek()) || peek() == '_') advance();
+            if (arg_start == parser.current) error("Extern parameter name expected");
+            Node* arg = new_node(NODE_IDENT);
+            arg->text = safe_strdup(arg_start, parser.current - arg_start);
+            add_child(node, arg);
+        } while(match_char(','));
+    }
+    expect_char(')', "Extern parameters must end with ')'");
     match_char(';');
     return node;
 }
 
-Node* parse_program(const char* src) {
-    signal(SIGINT,handle_interrupt);
-    parser.start=src;
-    parser.current=src;
-    Node* program=new_node(NODE_PROGRAM);
+static Node* parse_import() {
     skip_whitespace();
-    while(!is_at_end()){
-        Node* n=NULL;
-        if(match_keyword("fn")) n=parse_function();
-        else if(match_keyword("extern")) n=parse_extern();
-        else n=parse_stmt();
-        if(n) add_child(program,n);
+    if (peek() != '"') error("import expects a file string");
+    advance();
+    const char* start = parser.current;
+    while (peek() != '"' && !is_at_end()) advance();
+    Node* n = new_node(NODE_IMPORT);
+    n->text = safe_strdup(start, parser.current - start);
+    expect_char('"', "Unterminated import string");
+    match_char(';');
+    return n;
+}
+
+Node* parse_program(const char* src) {
+    signal(SIGINT, handle_interrupt);
+    parser.start = src;
+    parser.current = src;
+    Node* program = new_node(NODE_PROGRAM);
+    skip_whitespace();
+    while (!is_at_end()) {
+        Node* n = NULL;
+        if (match_keyword("import")) n = parse_import();
+        else if (match_keyword("fn")) n = parse_function();
+        else if (match_keyword("extern")) n = parse_extern();
+        else n = parse_stmt();
+        if (n) add_child(program, n);
         skip_whitespace();
     }
     return program;

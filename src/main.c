@@ -105,36 +105,16 @@ static void print_license(void){
 
 static void run_file_mode(const char* path, Env* env){
     if(!path) return;
-
-    if(strcmp(path, "credits") == 0){
-        print_credits();
-        return;
-    }
-    if(strcmp(path, "license") == 0){
-        print_license();
-        return;
-    }
-
+    if(strcmp(path, "credits") == 0){ print_credits(); return; }
+    if(strcmp(path, "license") == 0){ print_license(); return; }
     char* src = read_file_to_string(path);
-    if(!src){
-        fprintf(stderr, "Error: Cannot open file %s\n", path);
-        exit(1);
-    }
-
+    if(!src){ fprintf(stderr, "Error: Cannot open file %s\n", path); exit(1); }
     Node* program = parse_program(src);
     free(src);
-    if(!program){
-        fprintf(stderr, "Error: Parse error in file %s\n", path);
-        exit(1);
-    }
-
+    if(!program){ fprintf(stderr, "Error: Parse error in file %s\n", path); exit(1); }
     int exec_result = execute_program(program, env);
     free_node(program);
-
-    if(exec_result != 0){
-        fprintf(stderr, "Error: Runtime error in file %s\n", path);
-        exit(1);
-    }
+    if(exec_result != 0){ fprintf(stderr, "Error: Runtime error in file %s\n", path); exit(1); }
 }
 
 int main(int argc, char** argv){
@@ -143,19 +123,10 @@ int main(int argc, char** argv){
     register_builtins(env);
     if(argc >= 2){
         if(argc == 2){
-            if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0){
-                printf("%s\n", version_string());
-                return 0;
-            }
-            if(strcmp(argv[1], "credits") == 0){
-                print_credits();
-                return 0;
-            }
-            if(strcmp(argv[1], "license") == 0){
-                print_license();
-                return 0;
-            }
-            run_file_mode(argv[1], env);
+            if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0){ printf("%s\n", version_string()); return 0; }
+            if(strcmp(argv[1], "credits") == 0){ print_credits(); return 0; }
+            if(strcmp(argv[1], "license") == 0){ print_license(); return 0; }
+            interpret_file(argv[1], env);
             return 0;
         } else {
             fprintf(stderr, "Usage: dusth [script.dth]\n");
@@ -167,75 +138,37 @@ int main(int argc, char** argv){
     if(!linebuf) return 1;
     print_banner_and_help();
     for(;;){
-        if(g_interrupted){
-            printf("\nInterrupted\n");
-            free(linebuf);
-            exit(1);
-        }
+        if(g_interrupted){ printf("\nInterrupted\n"); free(linebuf); exit(1); }
         printf(">>> ");
         fflush(stdout);
         if(!fgets(linebuf, (int)bufcap, stdin)) break;
         char* trimmed = str_strip(linebuf);
         if(!trimmed) continue;
-        if(strcmp(trimmed, "exit") == 0 || strcmp(trimmed, "quit") == 0){
-            free(trimmed);
-            break;
-        }
-        if(strcmp(trimmed, "help") == 0){
-            print_help();
-            free(trimmed);
-            continue;
-        }
-        if(strcmp(trimmed, "credits") == 0){
-            print_credits();
-            free(trimmed);
-            continue;
-        }
-        if(strcmp(trimmed, "license") == 0){
-            print_license();
-            free(trimmed);
-            continue;
-        }
-        if(strcmp(trimmed, "-v") == 0 || strcmp(trimmed, "--version") == 0){
-            printf("%s\n", version_string());
-            free(trimmed);
-            continue;
-        }
+        if(strcmp(trimmed, "exit") == 0 || strcmp(trimmed, "quit") == 0){ free(trimmed); break; }
+        if(strcmp(trimmed, "help") == 0){ print_help(); free(trimmed); continue; }
+        if(strcmp(trimmed, "credits") == 0){ print_credits(); free(trimmed); continue; }
+        if(strcmp(trimmed, "license") == 0){ print_license(); free(trimmed); continue; }
+        if(strcmp(trimmed, "-v") == 0 || strcmp(trimmed, "--version") == 0){ printf("%s\n", version_string()); free(trimmed); continue; }
         int stmt = is_statement_start(trimmed);
         int ended = ends_with_semicolon_or_block(trimmed);
-        if(stmt || ended){
-            char* src = NULL;
-            if(ended) src = safe_strdup(trimmed);
-            else {
-                src = malloc(strlen(trimmed) + 2);
-                if(!src){ free(trimmed); fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-                strcpy(src, trimmed);
-                strcat(src, ";");
-            }
-            Node* program = parse_program(src);
-            free(src);
-            if(!program){ free(trimmed); fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-            int ok = execute_program(program, env);
-            free_node(program);
-            free(trimmed);
-            if(!ok){ fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-            continue;
+        char* src = NULL;
+        if(strncmp(trimmed, "extern", 6) == 0) {
+            src = safe_strdup(trimmed);
+        } else if(ended) {
+            src = safe_strdup(trimmed);
         } else {
-            size_t wrap_len = 4 + strlen(trimmed) + 2;
-            char* wrapped = malloc(wrap_len);
-            if(!wrapped){ free(trimmed); fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-            strcpy(wrapped, "say(");
-            strcat(wrapped, trimmed);
-            strcat(wrapped, ");");
-            Node* program = parse_program(wrapped);
-            free(wrapped);
-            if(!program){ free(trimmed); fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-            int ok = execute_program(program, env);
-            free_node(program);
-            free(trimmed);
-            if(!ok){ fprintf(stderr, "Error (problem in C written)\n"); exit(1); }
-            continue;
+            src = malloc(strlen(trimmed) + 2);
+            if(!src){ free(trimmed); fprintf(stderr, "Error\n"); exit(1); }
+            strcpy(src, trimmed);
+            strcat(src, ";");
         }
+        Node* program = parse_program(src);
+        free(src);
+        if(!program){ free(trimmed); fprintf(stderr, "Error\n"); exit(1); }
+        int ok = execute_program(program, env);
+        free_node(program);
+        free(trimmed);
+        if(ok != 0){ fprintf(stderr, "Error\n"); exit(1); }
     }
     free(linebuf);
     return 0;
