@@ -90,17 +90,43 @@ static void print_credits(void){
     printf("Dusth %s: Founded by Viren Sahti\n", version_string());
 }
 
-static void print_license(void){
-    printf("License & Disclaimer\n");
-    printf("Copyright \u00A9 2026 Viren Sahti\n\n");
-    printf("This software is provided \"as is\", without any warranty, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.\n\n");
-    printf("By using this software, you agree that Viren is not responsible for any direct or indirect damages, loss of data, profits, or other consequences arising from:\n");
-    printf("- Misuse of the software\n");
-    printf("- Criminal activity, hacking, or any illegal use\n");
-    printf("- Modifications or derivative works\n");
-    printf("- Software bugs, failures, or security breaches\n\n");
-    printf("This software may only be used for legitimate purposes. Redistribution, modification, or claiming the code as your own is strictly prohibited. All rights remain with Viren.\n\n");
-    printf("Use at your own risk.\n");
+static void print_license(void) {
+    printf("\n");
+    printf("================================================================================\n");
+    printf("                        VIREN SAHTI PROPRIETARY LICENSE                         \n");
+    printf("                       Copyright \u00A9 2026 Viren Sahti.                       \n");
+    printf("                              ALL RIGHTS RESERVED.                              \n");
+    printf("================================================================================\n\n");
+
+    printf("1. CRITICAL WARNING: NO WARRANTY & LIMITATION OF LIABILITY\n");
+    printf("----------------------------------------------------------\n");
+    printf("THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND. BY EXECUTING\n");
+    printf("THIS PROGRAM, YOU EXPLICITLY AGREE TO THE FOLLOWING TERMS:\n\n");
+
+    printf("A) TOTAL LIABILITY EXCLUSION:\n");
+    printf("   VIREN SAHTI IS NOT RESPONSIBLE FOR ANY DAMAGE TO YOUR HARDWARE, SOFTWARE,\n");
+    printf("   OR DATA. IF THIS SOFTWARE CAUSES YOUR COMPUTER TO CRASH, OVERHEAT, MALFUNCTION,\n");
+    printf("   OR IF IT RESULTS IN TOTAL SYSTEM FAILURE (\"BRICKING\"), THIS IS SOLELY YOUR\n");
+    printf("   RESPONSIBILITY. YOU ASSUME ALL COSTS FOR REPAIR AND SERVICING.\n\n");
+
+    printf("B) NO REMEDY:\n");
+    printf("   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DIRECT, INDIRECT,\n");
+    printf("   INCIDENTAL, OR CONSEQUENTIAL DAMAGES (INCLUDING LOSS OF PROFITS, DATA LOSS,\n");
+    printf("   OR BUSINESS INTERRUPTION) HOWEVER CAUSED.\n\n");
+
+    printf("2. STRICT ANTI-THEFT & COPYRIGHT PROTECTION\n");
+    printf("-------------------------------------------\n");
+    printf("This software is PROPRIETARY and CONFIDENTIAL. It is NOT open-source.\n\n");
+    
+    printf("- THEFT: Claiming this code as your own is strictly prohibited.\n");
+    printf("- MODIFICATION: You may NOT decompile, reverse engineer, disassemble, or modify\n");
+    printf("  any part of this software.\n");
+    printf("- REDISTRIBUTION: You may NOT share, sell, or distribute this software without\n");
+    printf("  prior written consent from Viren Sahti.\n\n");
+
+    printf("ANY UNAUTHORIZED USE OR COPYING IS A VIOLATION OF COPYRIGHT LAW.\n");
+    printf("USE ENTIRELY AT YOUR OWN RISK.\n");
+    printf("================================================================================\n\n");
 }
 
 static void run_file_mode(const char* path, Env* env){
