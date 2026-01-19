@@ -18,7 +18,9 @@
 ``` bash
 
 # Download Dusth
-wget https://github.com/therealviren/dusth/archive/refs/heads/main.zip -O dusth-main.zip
+curl -L https://github.com/therealviren/dusth/archive/refs/heads/main.zip -o dusth-main.zip
+
+# Setup
 unzip dusth-main.zip
 cd dusth-main
 
