@@ -28,5 +28,9 @@ cd dusth-main
 chmod +x install.sh
 ./install.sh
 
+# Finish install
+rm -r dusth-main dusth-main.zip
+cd ..
+
 # Run Dusth
 dusth
