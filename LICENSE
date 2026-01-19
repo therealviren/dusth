@@ -1,14 +1,43 @@
-License & Disclaimer
-Copyright © 2026 Viren
-
-This software is provided "as is", without any warranty, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
-
-By using this software, you agree that Viren is not responsible for any direct or indirect damages, loss of data, profits, or other consequences arising from:
-- Misuse of the software
-- Criminal activity, hacking, or any illegal use
-- Modifications or derivative works
-- Software bugs, failures, or security breaches
-
-This software may only be used for legitimate purposes. Redistribution, modification, or claiming the code as your own is strictly prohibited. All rights remain with Viren.
-
-Use at your own risk.
+/***********************************************************************************
+ * Viren Sahti Proprietary License
+ * Copyright (c) 2026 Viren Sahti. All Rights Reserved.
+ *
+ * 1. NO WARRANTY & LIMITATION OF LIABILITY ("USE AT YOUR OWN RISK")
+ * -----------------------------------------------------------------
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER (VIREN SAHTI) "AS IS" AND ANY 
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND 
+ * NON-INFRINGEMENT ARE DISCLAIMED.
+ *
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY DIRECT, INDIRECT, 
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
+ * PROFITS; SYSTEM FAILURE; COMPUTER MALFUNCTION; OR BUSINESS INTERRUPTION) HOWEVER 
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * BY USING THIS SOFTWARE, YOU EXPRESSLY ACKNOWLEDGE AND AGREE THAT:
+ * A) THE USE OF THE SOFTWARE IS AT YOUR SOLE RISK.
+ * B) THE ENTIRE RISK AS TO SATISFACTORY QUALITY, PERFORMANCE, AND ACCURACY IS WITH YOU.
+ * C) SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY 
+ * SERVICING, REPAIR, OR CORRECTION.
+ *
+ * 2. NO THEFT, REDISTRIBUTION, OR MODIFICATION
+ * --------------------------------------------
+ * This software is proprietary and confidential. It is NOT open-source.
+ *
+ * - REDISTRIBUTION: You may NOT redistribute, sell, rent, lease, sub-license, or 
+ * otherwise transfer this software or any portion of it to any third party without 
+ * prior written consent from Viren Sahti.
+ * - MODIFICATION: You may NOT modify, decompile, reverse engineer, disassemble, or 
+ * create derivative works based on this software.
+ * - COPYING: Copying any part of this code for use in other projects is strictly 
+ * prohibited.
+ *
+ * 3. TERMINATION
+ * --------------
+ * Any use of this software in violation of these terms will automatically terminate 
+ * your rights to use it and may result in legal action.
+ *
+ ***********************************************************************************/
