@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include <time.h>
+#include <math.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -82,7 +82,7 @@ static Value bh_abs(Env* env, Value* args, size_t argc){
     if(args[0].type==V_INT) return value_int(llabs(args[0].v.i));
     return value_float(fabs((args[0].type==V_FLOAT?args[0].v.f:(double)args[0].v.i)));
 }
-static Value bh_pown(Env* env, Value* args, size_t argc){
+static Value bh_powf(Env* env, Value* args, size_t argc){
     (void)env;
     if(argc<2) return value_float(0.0);
     double a=(args[0].type==V_FLOAT?args[0].v.f:(double)args[0].v.i);
@@ -141,14 +141,15 @@ static Value bh_range(Env* env, Value* args, size_t argc){
     long long a=0,b=0;
     if(argc==1){ b=args[0].v.i; }
     else if(argc>=2){ a=args[0].v.i; b=args[1].v.i; }
-    Value L=value_list();
+    Value L = value_list();
     for(long long i=a;i<b;i++){
-        Value it=value_int(i);
-        Value* p=malloc(sizeof(Value));
-        *p=it;
-        Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
-        L.v.list.items=arr;
-        L.v.list.items[L.v.list.len++]=p;
+        Value it = value_int(i);
+        Value* p = malloc(sizeof(Value));
+        *p = value_clone(&it);
+        Value** arr = realloc(L.v.list.items, sizeof(Value*) * (L.v.list.len + 1));
+        L.v.list.items = arr;
+        L.v.list.items[L.v.list.len++] = p;
+        value_free(&it);
     }
     return L;
 }
@@ -209,8 +210,7 @@ static Value bh_mapf(Env* env, Value* args, size_t argc){
     Value L=value_list();
     for(size_t i=0;i<args[0].v.list.len;i++){
         Value item=value_clone(args[0].v.list.items[i]);
-        Value callarg;
-        callarg = value_clone(&item);
+        Value callarg=value_clone(&item);
         Value res = fn(env,&callarg,1);
         value_free(&callarg);
         Value* p=malloc(sizeof(Value));
@@ -391,7 +391,7 @@ static Value bh_keys(Env* env, Value* args, size_t argc){
     for(size_t i=0;i<args[0].v.map.len;i++){
         Value ks=value_string(args[0].v.map.keys[i]);
         Value* p=malloc(sizeof(Value));
-        *p=ks;
+        *p = ks;
         Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
         L.v.list.items=arr;
         L.v.list.items[L.v.list.len++]=p;
@@ -405,14 +405,75 @@ static Value bh_values(Env* env, Value* args, size_t argc){
     for(size_t i=0;i<args[0].v.map.len;i++){
         Value vs=value_clone(args[0].v.map.vals[i]);
         Value* p=malloc(sizeof(Value));
-        *p=vs;
+        *p = vs;
         Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
         L.v.list.items=arr;
         L.v.list.items[L.v.list.len++]=p;
     }
     return L;
 }
+static Value bh_input(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc >= 1 && args[0].type == V_STRING){
+        char* prompt = args[0].v.s;
+        if(prompt && prompt[0]){ fputs(prompt, stdout); fflush(stdout); }
+    }
+    char* line = NULL;
+    size_t len = 0;
+    ssize_t n = getline(&line, &len, stdin);
+    if(n <= 0){ if(line) free(line); return value_string(""); }
+    if(n > 0 && line[n-1] == '\n') line[n-1] = '\0';
+    Value v = value_string(line);
+    free(line);
+    return v;
+}
+static Value bh_os_call(Env* env, Value* args, size_t argc){
+    if(argc < 1) return value_int(-1);
+    char* cmd = value_to_string(&args[0]);
+    int st = system(cmd);
+    free(cmd);
+    return value_int((long long)st);
+}
+static Value bh_sh(Env* env, Value* args, size_t argc){
+    if(argc < 1) return value_int(-1);
+    char* cmd = value_to_string(&args[0]);
+    int st = system(cmd);
+    free(cmd);
+    return value_int((long long)st);
+}
+static Value bh_echo(Env* env, Value* args, size_t argc){
+    (void)env;
+    for(size_t i=0;i<argc;i++){
+        char* s = value_to_string(&args[i]);
+        printf("%s", s);
+        free(s);
+        if(i+1<argc) printf(" ");
+    }
+    printf("\n");
+    return value_null();
+}
 void register_builtins(Env* e){
+    env_set(e,"input", value_native(bh_input, "input"));
+    env_set(e,"sh", value_native(bh_sh, "sh"));
+    env_set(e,"input_int", value_native(bh_input, "input_int"));
+    Value m = value_map();
+    m.v.map.len = 3;
+    m.v.map.cap = 3;
+    m.v.map.keys = malloc(sizeof(char*) * 3);
+    m.v.map.vals = malloc(sizeof(Value*) * 3);
+    m.v.map.keys[0] = dh_strdup("sh");
+    Value* p0 = malloc(sizeof(Value));
+    *p0 = value_native(bh_sh, "sh");
+    m.v.map.vals[0] = p0;
+    m.v.map.keys[1] = dh_strdup("echo");
+    Value* p1 = malloc(sizeof(Value));
+    *p1 = value_native(bh_echo, "echo");
+    m.v.map.vals[1] = p1;
+    m.v.map.keys[2] = dh_strdup("call");
+    Value* p2 = malloc(sizeof(Value));
+    *p2 = value_native(bh_os_call, "call");
+    m.v.map.vals[2] = p2;
+    env_set(e, "os", m);
     env_set(e,"say",value_native(bh_say,"say"));
     env_set(e,"print",value_native(bh_print,"print"));
     env_set(e,"len",value_native(bh_len,"len"));
@@ -421,7 +482,7 @@ void register_builtins(Env* e){
     env_set(e,"to_float",value_native(bh_to_float,"to_float"));
     env_set(e,"type_of",value_native(bh_type_of,"type_of"));
     env_set(e,"abs",value_native(bh_abs,"abs"));
-    env_set(e,"pow",value_native(bh_pown,"pow"));
+    env_set(e,"pow",value_native(bh_powf,"pow"));
     env_set(e,"sqrt",value_native(bh_sqrtf,"sqrt"));
     env_set(e,"sin",value_native(bh_sinf,"sin"));
     env_set(e,"cos",value_native(bh_cosf,"cos"));

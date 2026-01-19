@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <signal.h>
 #include <math.h>
 
 extern int load_external_file_into_env(const char* path, Env* env);
@@ -153,16 +152,28 @@ static Value call_user_function(Value* fval, Env* env, Node** args, size_t argc)
 }
 
 static Value eval_call(Node* cal, Env* env) {
-    if (!cal || !cal->text) return value_null();
-    Value fnv;
-    if (!env_get(env, cal->text, &fnv)) return make_error_string("undefined function");
+    if (!cal) return value_null();
+    Value fnv = value_null();
+    Node** argnodes = NULL;
+    size_t argc = 0;
+    if (cal->text) {
+        if (!env_get(env, cal->text, &fnv)) return make_error_string("undefined function");
+        argnodes = cal->children;
+        argc = cal->childc;
+    } else if (cal->childc > 0) {
+        fnv = eval_node(cal->children[0], env);
+        argnodes = cal->children + 1;
+        argc = cal->childc > 0 ? cal->childc - 1 : 0;
+    } else {
+        return value_null();
+    }
     if (fnv.type == V_NATIVE) {
-        Value out = call_native(fnv.v.native.fn, env, cal->children, cal->childc);
+        Value out = call_native(fnv.v.native.fn, env, argnodes, argc);
         value_free(&fnv);
         return out;
     }
     if (fnv.type == V_FUNC) {
-        Value out = call_user_function(&fnv, env, cal->children, cal->childc);
+        Value out = call_user_function(&fnv, env, argnodes, argc);
         value_free(&fnv);
         return out;
     }
@@ -217,6 +228,36 @@ static Value eval_node(Node* n, Env* env) {
         case NODE_IDENT: {
             Value out;
             if (env_get(env, n->text, &out)) return out;
+            return value_null();
+        }
+        case NODE_INDEX: {
+            if (n->childc < 2) return value_null();
+            Value container = eval_node(n->children[0], env);
+            Value index = eval_node(n->children[1], env);
+            if (container.type == V_MAP && index.type == V_STRING) {
+                for (size_t i = 0; i < container.v.map.len; ++i) {
+                    if (strcmp(container.v.map.keys[i], index.v.s) == 0) {
+                        Value out = value_clone(container.v.map.vals[i]);
+                        value_free(&container);
+                        value_free(&index);
+                        return out;
+                    }
+                }
+                value_free(&container);
+                value_free(&index);
+                return value_null();
+            }
+            if (container.type == V_LIST && index.type == V_INT) {
+                long long idx = index.v.i;
+                if (idx >= 0 && (size_t)idx < container.v.list.len) {
+                    Value out = value_clone(container.v.list.items[idx]);
+                    value_free(&container);
+                    value_free(&index);
+                    return out;
+                }
+            }
+            value_free(&container);
+            value_free(&index);
             return value_null();
         }
         case NODE_BINARY: {
@@ -319,6 +360,32 @@ static Value eval_node(Node* n, Env* env) {
             return eval_call(n, env);
         case NODE_BLOCK:
             return eval_program(n, env);
+        case NODE_IF: {
+            Value cond = eval_node(n->children[0], env);
+            int truth = 0;
+            if (cond.type == V_BOOL) truth = cond.v.b;
+            else if (cond.type == V_INT) truth = cond.v.i != 0;
+            else if (cond.type == V_FLOAT) truth = cond.v.f != 0.0;
+            value_free(&cond);
+            if (truth) return eval_node(n->children[1], env);
+            if (n->childc > 2) return eval_node(n->children[2], env);
+            return value_null();
+        }
+        case NODE_LOOP: {
+            Value out = value_null();
+            while (1) {
+                Value cond = eval_node(n->children[0], env);
+                int truth = 0;
+                if (cond.type == V_BOOL) truth = cond.v.b;
+                else if (cond.type == V_INT) truth = cond.v.i != 0;
+                else if (cond.type == V_FLOAT) truth = cond.v.f != 0.0;
+                value_free(&cond);
+                if (!truth) break;
+                value_free(&out);
+                out = eval_node(n->children[1], env);
+            }
+            return out;
+        }
         case NODE_EXTERN: {
             if (!n->text) return value_null();
             char* local = dh_concat("./", n->text);

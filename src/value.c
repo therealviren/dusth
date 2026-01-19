@@ -42,8 +42,19 @@ Value value_list_from_array(Value** items, size_t n){
     }
     return v;
 }
+
 Value value_native(NativeFn fn, const char* name){
     Value v; v.type = V_NATIVE; v.v.native.fn = fn; v.v.native.name = dh_strdup(name ? name : "native"); return v;
+}
+
+Value value_map(void){
+    Value v;
+    v.type = V_MAP;
+    v.v.map.keys = NULL;
+    v.v.map.vals = NULL;
+    v.v.map.len = 0;
+    v.v.map.cap = 0;
+    return v;
 }
 
 Value value_clone(const Value* v){

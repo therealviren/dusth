@@ -58,6 +58,7 @@ Value value_int(long long i);
 Value value_float(double f);
 Value value_string(const char* s);
 Value value_list(void);
+Value value_map(void);
 Value value_list_from_array(Value** items, size_t n);
 Value value_native(NativeFn fn, const char* name);
 Value value_clone(const Value* v);
