@@ -53,12 +53,27 @@ char* dh_now_iso(){
 char* read_file_to_string(const char* path){
     FILE* f = fopen(path, "rb");
     if(!f) return NULL;
-    fseek(f, 0, SEEK_END);
+    if(fseek(f, 0, SEEK_END) != 0){
+        fclose(f);
+        return NULL;
+    }
     long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char* buf = malloc(sz + 1);
-    if(sz > 0) fread(buf, 1, sz, f);
-    buf[sz] = 0;
+    if(sz < 0){
+        fclose(f);
+        return NULL;
+    }
+    if(fseek(f, 0, SEEK_SET) != 0){
+        fclose(f);
+        return NULL;
+    }
+    char* buf = malloc((size_t)sz + 1);
+    if(!buf){
+        fclose(f);
+        return NULL;
+    }
+    size_t read = 0;
+    if(sz > 0) read = fread(buf, 1, (size_t)sz, f);
+    buf[read] = 0;
     fclose(f);
     return buf;
 }

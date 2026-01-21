@@ -161,22 +161,54 @@ Node* node_clone(Node* n){
 static Node* parse_primary() {
     skip_whitespace();
     char c = peek();
+
     if (c == '"') {
         advance();
-        const char* start = parser.current;
-        while (peek() != '"' && !is_at_end()) advance();
-        size_t len = parser.current - start;
-        Node* node = new_node(NODE_LITERAL);
-        node->text = safe_strdup(start, len);
+
+        char* buf = safe_malloc(1);
+        size_t len = 0;
+        buf[0] = 0;
+
+        while (!is_at_end() && peek() != '"') {
+            char ch = advance();
+
+            if (ch == '\\') {
+                char e = advance();
+
+                if (e == 'n') ch = '\n';
+                else if (e == 't') ch = '\t';
+                else if (e == 'r') ch = '\r';
+                else if (e == '\\') ch = '\\';
+                else if (e == '"') ch = '"';
+                else if (e == 'x') {
+                    char h1 = advance();
+                    char h2 = advance();
+                    char hex[3] = { h1, h2, 0 };
+                    ch = (char)strtol(hex, NULL, 16);
+                } else {
+                    ch = e;
+                }
+            }
+
+            buf = realloc(buf, len + 2);
+            buf[len++] = ch;
+            buf[len] = 0;
+        }
+
         expect_char('"', "Expected closing '\"'");
+
+        Node* node = new_node(NODE_LITERAL);
+        node->text = buf;
         return node;
     }
+
     if (c == '(') {
         advance();
         Node* inner = parse_expr();
         expect_char(')', "Expected ')'");
         return inner;
     }
+
     if (isdigit((unsigned char)c)) {
         const char* start = parser.current;
         while (isdigit((unsigned char)peek()) || peek() == '.') advance();
@@ -184,14 +216,15 @@ static Node* parse_primary() {
         node->num = strtod(start, NULL);
         return node;
     }
+
     if (isalpha((unsigned char)c) || c == '_') {
         const char* start = parser.current;
         while (isalnum((unsigned char)peek()) || peek() == '_') advance();
-        char* id = safe_strdup(start, parser.current - start);
         Node* node = new_node(NODE_IDENT);
-        node->text = id;
+        node->text = safe_strdup(start, parser.current - start);
         return node;
     }
+
     return NULL;
 }
 
@@ -213,6 +246,24 @@ static Node* parse_postfix(Node* left) {
             add_child(n, left);
             add_child(n, idx);
             left = n;
+            continue;
+        }
+        if (peek() == '.' && parser.current[1] == '(') {
+            advance();
+            advance();
+            Node* call = make_call_node_from_expr(left);
+            skip_whitespace();
+            if (peek() != ')') {
+                while (!is_at_end() && peek() != ')') {
+                    Node* arg = parse_expr();
+                    if (!arg) break;
+                    add_child(call, arg);
+                    skip_whitespace();
+                    if (!match_char(',')) break;
+                }
+            }
+            expect_char(')', "Expected ')'");
+            left = call;
             continue;
         }
         if (peek() == '(') {
@@ -262,13 +313,16 @@ static Node* parse_unary() {
 static Node* parse_factor() {
     Node* left = parse_unary();
     while (true) {
-        if (match_char('*')) {
+        skip_whitespace();
+        if (peek() == '*' && parser.current[1] != '=') {
+            advance();
             Node* n = new_node(NODE_BINARY);
             n->text = safe_strdup("*",1);
             add_child(n,left);
             add_child(n,parse_unary());
             left = n;
-        } else if (match_char('/')) {
+        } else if (peek() == '/' && parser.current[1] != '=') {
+            advance();
             Node* n = new_node(NODE_BINARY);
             n->text = safe_strdup("/",1);
             add_child(n,left);
@@ -282,13 +336,16 @@ static Node* parse_factor() {
 static Node* parse_term() {
     Node* left = parse_factor();
     while (true) {
-        if (match_char('+')) {
+        skip_whitespace();
+        if (peek() == '+' && parser.current[1] != '=') {
+            advance();
             Node* n = new_node(NODE_BINARY);
             n->text = safe_strdup("+",1);
             add_child(n,left);
             add_child(n,parse_factor());
             left = n;
-        } else if (match_char('-')) {
+        } else if (peek() == '-' && parser.current[1] != '=') {
+            advance();
             Node* n = new_node(NODE_BINARY);
             n->text = safe_strdup("-",1);
             add_child(n,left);
@@ -302,7 +359,42 @@ static Node* parse_term() {
 static Node* parse_comparison() {
     Node* left = parse_term();
     skip_whitespace();
-    if (match_char('<')) {
+    if (peek() == '+' && parser.current[1] == '=') {
+        advance(); advance();
+        Node* n = new_node(NODE_ASSIGN);
+        n->text = safe_strdup("+=",2);
+        add_child(n,left);
+        add_child(n,parse_expr());
+        left = n;
+    } else if (peek() == '-' && parser.current[1] == '=') {
+        advance(); advance();
+        Node* n = new_node(NODE_ASSIGN);
+        n->text = safe_strdup("-=",2);
+        add_child(n,left);
+        add_child(n,parse_expr());
+        left = n;
+    } else if (peek() == '*' && parser.current[1] == '=') {
+        advance(); advance();
+        Node* n = new_node(NODE_ASSIGN);
+        n->text = safe_strdup("*=",2);
+        add_child(n,left);
+        add_child(n,parse_expr());
+        left = n;
+    } else if (peek() == '/' && parser.current[1] == '=') {
+        advance(); advance();
+        Node* n = new_node(NODE_ASSIGN);
+        n->text = safe_strdup("/=",2);
+        add_child(n,left);
+        add_child(n,parse_expr());
+        left = n;
+    } else if (peek() == '%' && parser.current[1] == '=') {
+        advance(); advance();
+        Node* n = new_node(NODE_ASSIGN);
+        n->text = safe_strdup("%=",2);
+        add_child(n,left);
+        add_child(n,parse_expr());
+        left = n;
+    } else if (match_char('<')) {
         Node* n = new_node(NODE_BINARY);
         n->text = match_char('=')?safe_strdup("<=",2):safe_strdup("<",1);
         add_child(n,left);
@@ -323,6 +415,7 @@ static Node* parse_comparison() {
             left = n;
         } else {
             Node* n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("=",1);
             add_child(n,left);
             add_child(n,parse_expr());
             left = n;

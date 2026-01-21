@@ -15,6 +15,7 @@ static Value eval_program(Node* n, Env* env);
 static Value eval_call(Node* cal, Env* env);
 static Node* clone_node(Node* n);
 static void register_symbols_from_ast(Node* ast, Env* env);
+static Value perform_binary_op(const char* op, const Value* a, const Value* b);
 
 Value value_func(char** params, size_t paramc, Node* body, Env* closure) {
     Value v;
@@ -196,6 +197,46 @@ static Value eval_program(Node* n, Env* env) {
     return last;
 }
 
+static Value perform_binary_op(const char* op, const Value* a, const Value* b) {
+    if (!op) return value_null();
+    if (strcmp(op, "+") == 0) {
+        if (a->type == V_STRING || b->type == V_STRING) {
+            char* sa = value_to_string(a);
+            char* sb = value_to_string(b);
+            char* c = dh_concat(sa, sb);
+            Value r = value_string(c);
+            free(sa); free(sb); free(c);
+            return r;
+        } else if (a->type == V_INT && b->type == V_INT) {
+            return value_int(a->v.i + b->v.i);
+        } else {
+            double av = (a->type == V_FLOAT ? a->v.f : (double)(a->type == V_INT ? a->v.i : 0));
+            double bv = (b->type == V_FLOAT ? b->v.f : (double)(b->type == V_INT ? b->v.i : 0));
+            return value_float(av + bv);
+        }
+    } else if (strcmp(op, "-") == 0) {
+        if (a->type == V_INT && b->type == V_INT) return value_int(a->v.i - b->v.i);
+        double av = (a->type == V_FLOAT ? a->v.f : (double)(a->type == V_INT ? a->v.i : 0));
+        double bv = (b->type == V_FLOAT ? b->v.f : (double)(b->type == V_INT ? b->v.i : 0));
+        return value_float(av - bv);
+    } else if (strcmp(op, "*") == 0) {
+        if (a->type == V_INT && b->type == V_INT) return value_int(a->v.i * b->v.i);
+        double av = (a->type == V_FLOAT ? a->v.f : (double)(a->type == V_INT ? a->v.i : 0));
+        double bv = (b->type == V_FLOAT ? b->v.f : (double)(b->type == V_INT ? b->v.i : 0));
+        return value_float(av * bv);
+    } else if (strcmp(op, "/") == 0) {
+        double av = (a->type == V_FLOAT ? a->v.f : (double)(a->type == V_INT ? a->v.i : 0));
+        double bv = (b->type == V_FLOAT ? b->v.f : (double)(b->type == V_INT ? b->v.i : 0));
+        return value_float(av / bv);
+    } else if (strcmp(op, "%") == 0) {
+        if (a->type == V_INT && b->type == V_INT) return value_int(a->v.i % b->v.i);
+        double av = (a->type == V_FLOAT ? a->v.f : (double)(a->type == V_INT ? a->v.i : 0));
+        double bv = (b->type == V_FLOAT ? b->v.f : (double)(b->type == V_INT ? b->v.i : 0));
+        return value_float(fmod(av, bv));
+    }
+    return value_null();
+}
+
 static Value eval_node(Node* n, Env* env) {
     if (!n) return value_null();
     switch (n->type) {
@@ -260,51 +301,63 @@ static Value eval_node(Node* n, Env* env) {
             value_free(&index);
             return value_null();
         }
+        case NODE_UNARY: {
+            Value v = value_null();
+            if (n->childc > 0) v = eval_node(n->children[0], env);
+            Value r = value_null();
+            if (n->text && strcmp(n->text, "-") == 0) {
+                if (v.type == V_INT) r = value_int(-v.v.i);
+                else if (v.type == V_FLOAT) r = value_float(-v.v.f);
+            } else if (n->text && strcmp(n->text, "!") == 0) {
+                int b = 0;
+                if (v.type == V_BOOL) b = !v.v.b;
+                else if (v.type == V_INT) b = !(v.v.i != 0);
+                else if (v.type == V_FLOAT) b = !(v.v.f != 0.0);
+                r = value_bool(b);
+            }
+            value_free(&v);
+            return r;
+        }
+        case NODE_ASSIGN: {
+            if (n->childc < 2) return value_null();
+            Node* left = n->children[0];
+            if (!left || left->type != NODE_IDENT) return value_null();
+            const char* name = left->text ? left->text : "";
+            Value rhs = eval_node(n->children[1], env);
+            if (!n->text || strcmp(n->text, "=") == 0) {
+                env_set(env, name, rhs);
+                Value out = value_clone(&rhs);
+                value_free(&rhs);
+                return out;
+            } else {
+                Value cur;
+                if (!env_get(env, name, &cur)) cur = value_null();
+                Value res = value_null();
+                if (strcmp(n->text, "+=") == 0) res = perform_binary_op("+", &cur, &rhs);
+                else if (strcmp(n->text, "-=") == 0) res = perform_binary_op("-", &cur, &rhs);
+                else if (strcmp(n->text, "*=") == 0) res = perform_binary_op("*", &cur, &rhs);
+                else if (strcmp(n->text, "/=") == 0) res = perform_binary_op("/", &cur, &rhs);
+                else if (strcmp(n->text, "%=") == 0) res = perform_binary_op("%", &cur, &rhs);
+                else res = value_clone(&rhs);
+                env_set(env, name, res);
+                value_free(&cur);
+                value_free(&rhs);
+                Value out = value_clone(&res);
+                value_free(&res);
+                return out;
+            }
+        }
         case NODE_BINARY: {
             Value a = eval_node(n->children[0], env);
             Value b = eval_node(n->children[1], env);
             char* op = n->text;
             Value res = value_null();
-            if (strcmp(op, "+") == 0) {
-                if (a.type == V_STRING || b.type == V_STRING) {
-                    char* sa = value_to_string(&a);
-                    char* sb = value_to_string(&b);
-                    char* c = dh_concat(sa, sb);
-                    res = value_string(c);
-                    free(sa); free(sb); free(c);
-                } else if (a.type == V_INT && b.type == V_INT) {
-                    res = value_int(a.v.i + b.v.i);
-                } else {
-                    double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
-                    double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
-                    res = value_float(av + bv);
-                }
-            } else if (strcmp(op, "-") == 0) {
-                if (a.type == V_INT && b.type == V_INT) res = value_int(a.v.i - b.v.i);
-                else {
-                    double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
-                    double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
-                    res = value_float(av - bv);
-                }
-            } else if (strcmp(op, "*") == 0) {
-                if (a.type == V_INT && b.type == V_INT) res = value_int(a.v.i * b.v.i);
-                else {
-                    double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
-                    double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
-                    res = value_float(av * bv);
-                }
-            } else if (strcmp(op, "/") == 0) {
-                double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
-                double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
-                res = value_float(av / bv);
-            } else if (strcmp(op, "%") == 0) {
-                if (a.type == V_INT && b.type == V_INT) res = value_int(a.v.i % b.v.i);
-                else {
-                    double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
-                    double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
-                    res = value_float(fmod(av, bv));
-                }
-            } else if (strcmp(op, "==") == 0) {
+            if (op && strcmp(op, "+") == 0) res = perform_binary_op("+", &a, &b);
+            else if (op && strcmp(op, "-") == 0) res = perform_binary_op("-", &a, &b);
+            else if (op && strcmp(op, "*") == 0) res = perform_binary_op("*", &a, &b);
+            else if (op && strcmp(op, "/") == 0) res = perform_binary_op("/", &a, &b);
+            else if (op && strcmp(op, "%") == 0) res = perform_binary_op("%", &a, &b);
+            else if (op && strcmp(op, "==") == 0) {
                 int eq = 0;
                 if (a.type == V_INT && b.type == V_INT) eq = (a.v.i == b.v.i);
                 else {
@@ -313,7 +366,7 @@ static Value eval_node(Node* n, Env* env) {
                     eq = (av == bv);
                 }
                 res = value_bool(eq);
-            } else if (strcmp(op, "!=") == 0) {
+            } else if (op && strcmp(op, "!=") == 0) {
                 int ne = 0;
                 if (a.type == V_INT && b.type == V_INT) ne = (a.v.i != b.v.i);
                 else {
@@ -322,11 +375,11 @@ static Value eval_node(Node* n, Env* env) {
                     ne = (av != bv);
                 }
                 res = value_bool(ne);
-            } else if (strcmp(op, "<") == 0) {
+            } else if (op && strcmp(op, "<") == 0) {
                 double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
                 double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
                 res = value_bool(av < bv);
-            } else if (strcmp(op, ">") == 0) {
+            } else if (op && strcmp(op, ">") == 0) {
                 double av = (a.type == V_FLOAT ? a.v.f : (double)(a.type == V_INT ? a.v.i : 0));
                 double bv = (b.type == V_FLOAT ? b.v.f : (double)(b.type == V_INT ? b.v.i : 0));
                 res = value_bool(av > bv);

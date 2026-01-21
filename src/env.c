@@ -15,8 +15,13 @@ static void env_ensure_capacity(Env* e){
     if(!e) return;
     if(e->count + 1 > e->capacity){
         size_t newcap = (e->capacity == 0 ? 8 : e->capacity * 2);
-        e->keys = realloc(e->keys, sizeof(char*) * newcap);
-        e->values = realloc(e->values, sizeof(Value) * newcap);
+        char** nk = realloc(e->keys, sizeof(char*) * newcap);
+        Value* nv = realloc(e->values, sizeof(Value) * newcap);
+        if(!nk || !nv){
+            return;
+        }
+        e->keys = nk;
+        e->values = nv;
         e->capacity = newcap;
     }
 }
@@ -35,7 +40,7 @@ Env* env_new(Env* parent){
 void env_free(Env* e){
     if(!e) return;
     for(size_t i = 0; i < e->count; ++i){
-        free(e->keys[i]);
+        if(e->keys[i]) free(e->keys[i]);
         value_free(&e->values[i]);
     }
     free(e->keys);
@@ -45,7 +50,6 @@ void env_free(Env* e){
 
 int env_set(Env* e, const char* name, Value v){
     if(!e || !name) return 0;
-    
     for(Env* cur = e; cur; cur = cur->parent){
         for(size_t i = 0; i < cur->count; ++i){
             if(strcmp(cur->keys[i], name) == 0){
@@ -56,6 +60,7 @@ int env_set(Env* e, const char* name, Value v){
         }
     }
     env_ensure_capacity(e);
+    if(e->count + 1 > e->capacity) return 0;
     e->keys[e->count] = dh_strdup(name);
     e->values[e->count] = value_clone(&v);
     e->count++;

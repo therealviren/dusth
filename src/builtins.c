@@ -142,39 +142,62 @@ static Value bh_range(Env* env, Value* args, size_t argc){
     if(argc==1){ b=args[0].v.i; }
     else if(argc>=2){ a=args[0].v.i; b=args[1].v.i; }
     Value L = value_list();
+    Value** items = NULL;
+    size_t len = 0;
     for(long long i=a;i<b;i++){
         Value it = value_int(i);
         Value* p = malloc(sizeof(Value));
+        if(!p){
+            value_free(&it);
+            for(size_t j=0;j<len;j++){ value_free(items[j]); free(items[j]); }
+            free(items);
+            return value_list();
+        }
         *p = value_clone(&it);
-        Value** arr = realloc(L.v.list.items, sizeof(Value*) * (L.v.list.len + 1));
-        L.v.list.items = arr;
-        L.v.list.items[L.v.list.len++] = p;
         value_free(&it);
+        Value** tmp = realloc(items, sizeof(Value*) * (len + 1));
+        if(!tmp){
+            value_free(p);
+            free(p);
+            for(size_t j=0;j<len;j++){ value_free(items[j]); free(items[j]); }
+            free(items);
+            return value_list();
+        }
+        items = tmp;
+        items[len++] = p;
     }
+    L.v.list.items = items;
+    L.v.list.len = len;
+    L.v.list.cap = len;
     return L;
 }
 static Value bh_push(Env* env, Value* args, size_t argc){
     (void)env;
     if(argc<2) return value_null();
     if(args[0].type!=V_LIST) return value_null();
-    Value val=value_clone(&args[1]);
-    Value* p=malloc(sizeof(Value));
-    *p=val;
-    Value** arr=realloc(args[0].v.list.items,sizeof(Value*)*(args[0].v.list.len+1));
-    args[0].v.list.items=arr;
-    args[0].v.list.items[args[0].v.list.len++]=p;
-    return value_int((long long)args[0].v.list.len);
+    Value L = value_clone(&args[0]);
+    Value val = value_clone(&args[1]);
+    Value* p = malloc(sizeof(Value));
+    if(!p){ value_free(&L); value_free(&val); return value_null(); }
+    *p = value_clone(&val);
+    value_free(&val);
+    Value** tmp = realloc(L.v.list.items, sizeof(Value*)*(L.v.list.len+1));
+    if(!tmp){ free(p); value_free(&L); return value_null(); }
+    L.v.list.items = tmp;
+    L.v.list.items[L.v.list.len++] = p;
+    return L;
 }
 static Value bh_pop(Env* env, Value* args, size_t argc){
     (void)env;
     if(argc<1) return value_null();
     if(args[0].type!=V_LIST) return value_null();
     if(args[0].v.list.len==0) return value_null();
-    Value* it=args[0].v.list.items[args[0].v.list.len-1];
-    Value out=value_clone(it);
+    Value L = value_clone(&args[0]);
+    Value* it = L.v.list.items[L.v.list.len-1];
+    Value out = value_clone(it);
     value_free(it);
     free(it);
-    args[0].v.list.len--;
+    L.v.list.len--;
     return out;
 }
 static Value bh_shift(Env* env, Value* args, size_t argc){
@@ -182,25 +205,30 @@ static Value bh_shift(Env* env, Value* args, size_t argc){
     if(argc<1) return value_null();
     if(args[0].type!=V_LIST) return value_null();
     if(args[0].v.list.len==0) return value_null();
-    Value* it=args[0].v.list.items[0];
-    Value out=value_clone(it);
+    Value L = value_clone(&args[0]);
+    Value* it = L.v.list.items[0];
+    Value out = value_clone(it);
     value_free(it);
     free(it);
-    for(size_t i=1;i<args[0].v.list.len;i++) args[0].v.list.items[i-1]=args[0].v.list.items[i];
-    args[0].v.list.len--;
+    for(size_t i=1;i<L.v.list.len;i++) L.v.list.items[i-1]=L.v.list.items[i];
+    L.v.list.len--;
     return out;
 }
 static Value bh_unshift(Env* env, Value* args, size_t argc){
     (void)env;
     if(argc<2) return value_null();
     if(args[0].type!=V_LIST) return value_null();
+    Value L = value_clone(&args[0]);
     Value* p=malloc(sizeof(Value));
-    *p=value_clone(&args[1]);
-    args[0].v.list.items=realloc(args[0].v.list.items,sizeof(Value*)*(args[0].v.list.len+1));
-    for(size_t i=args[0].v.list.len;i>0;i--) args[0].v.list.items[i]=args[0].v.list.items[i-1];
-    args[0].v.list.items[0]=p;
-    args[0].v.list.len++;
-    return value_int((long long)args[0].v.list.len);
+    if(!p){ value_free(&L); return value_null(); }
+    *p = value_clone(&args[1]);
+    Value** tmp = realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+    if(!tmp){ value_free(p); free(p); value_free(&L); return value_null(); }
+    L.v.list.items = tmp;
+    for(size_t i=L.v.list.len;i>0;i--) L.v.list.items[i]=L.v.list.items[i-1];
+    L.v.list.items[0]=p;
+    L.v.list.len++;
+    return L;
 }
 static Value bh_mapf(Env* env, Value* args, size_t argc){
     if(argc<2) return value_list();
@@ -214,8 +242,10 @@ static Value bh_mapf(Env* env, Value* args, size_t argc){
         Value res = fn(env,&callarg,1);
         value_free(&callarg);
         Value* p=malloc(sizeof(Value));
+        if(!p){ value_free(&item); continue; }
         *p=value_clone(&res);
         Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ free(p); value_free(&res); value_free(&item); continue; }
         L.v.list.items=arr;
         L.v.list.items[L.v.list.len++]=p;
         value_free(&res);
@@ -240,10 +270,12 @@ static Value bh_filterf(Env* env, Value* args, size_t argc){
         value_free(&callarg);
         if(keep){
             Value* p=malloc(sizeof(Value));
-            *p=value_clone(&item);
-            Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
-            L.v.list.items=arr;
-            L.v.list.items[L.v.list.len++]=p;
+            if(p){
+                *p=value_clone(&item);
+                Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+                if(arr){ L.v.list.items=arr; L.v.list.items[L.v.list.len++]=p; }
+                else { value_free(p); free(p); }
+            }
         }
         value_free(&res);
         value_free(&item);
@@ -391,8 +423,10 @@ static Value bh_keys(Env* env, Value* args, size_t argc){
     for(size_t i=0;i<args[0].v.map.len;i++){
         Value ks=value_string(args[0].v.map.keys[i]);
         Value* p=malloc(sizeof(Value));
+        if(!p){ value_free(&ks); continue; }
         *p = ks;
         Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ value_free(p); free(p); value_free(&ks); continue; }
         L.v.list.items=arr;
         L.v.list.items[L.v.list.len++]=p;
     }
@@ -405,8 +439,10 @@ static Value bh_values(Env* env, Value* args, size_t argc){
     for(size_t i=0;i<args[0].v.map.len;i++){
         Value vs=value_clone(args[0].v.map.vals[i]);
         Value* p=malloc(sizeof(Value));
+        if(!p){ value_free(&vs); continue; }
         *p = vs;
         Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ value_free(p); free(p); value_free(&vs); continue; }
         L.v.list.items=arr;
         L.v.list.items[L.v.list.len++]=p;
     }
@@ -450,6 +486,56 @@ static Value bh_echo(Env* env, Value* args, size_t argc){
         if(i+1<argc) printf(" ");
     }
     printf("\n");
+    return value_null();
+}
+static Value bh_random(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc==0){
+        double v = (double)rand() / ((double)RAND_MAX + 1.0);
+        return value_float(v);
+    }
+    if(argc==1){
+        if(args[0].type==V_INT){
+            long long n = args[0].v.i;
+            if(n <= 0) return value_int(0);
+            return value_int((long long)(rand() % n));
+        }
+        if(args[0].type==V_STRING){
+            int n = atoi(args[0].v.s);
+            if(n <= 0) return value_string("");
+            char* out = malloc(n+1);
+            for(int i=0;i<n;i++) out[i] = 'a' + (rand()%26);
+            out[n]=0;
+            Value r = value_string(out);
+            free(out);
+            return r;
+        }
+        return value_null();
+    }
+    if(argc>=2){
+        if(args[0].type==V_INT && args[1].type==V_INT){
+            long long a = args[0].v.i;
+            long long b = args[1].v.i;
+            if (a > b) { long long t=a; a=b; b=t; }
+            long long range = b - a + 1;
+            if(range <= 0) return value_int(a);
+            long long r = (long long)(rand() % range) + a;
+            return value_int(r);
+        }
+        if(args[0].type==V_STRING && (args[1].type==V_INT || args[1].type==V_STRING)){
+            const char* letters = args[0].v.s;
+            int n = (args[1].type==V_INT) ? (int)args[1].v.i : atoi(args[1].v.s);
+            if(n <= 0) return value_string("");
+            size_t pool = strlen(letters);
+            if(pool == 0) return value_string("");
+            char* out = malloc(n+1);
+            for(int i=0;i<n;i++) out[i] = letters[rand() % pool];
+            out[n]=0;
+            Value r = value_string(out);
+            free(out);
+            return r;
+        }
+    }
     return value_null();
 }
 void register_builtins(Env* e){
@@ -514,4 +600,43 @@ void register_builtins(Env* e){
     env_set(e,"eval",value_native(bh_evalv,"eval"));
     env_set(e,"keys",value_native(bh_keys,"keys"));
     env_set(e,"values",value_native(bh_values,"values"));
+    env_set(e,"random", value_native(bh_random, "random"));
+    Value ansi = value_map();
+    ansi.v.map.len = 8;
+    ansi.v.map.cap = 8;
+    ansi.v.map.keys = malloc(sizeof(char*) * 8);
+    ansi.v.map.vals = malloc(sizeof(Value*) * 8);
+    ansi.v.map.keys[0] = dh_strdup("reset");
+    Value* a0 = malloc(sizeof(Value));
+    *a0 = value_string("\x1b[0m");
+    ansi.v.map.vals[0] = a0;
+    ansi.v.map.keys[1] = dh_strdup("red");
+    Value* a1 = malloc(sizeof(Value));
+    *a1 = value_string("\x1b[31m");
+    ansi.v.map.vals[1] = a1;
+    ansi.v.map.keys[2] = dh_strdup("green");
+    Value* a2 = malloc(sizeof(Value));
+    *a2 = value_string("\x1b[32m");
+    ansi.v.map.vals[2] = a2;
+    ansi.v.map.keys[3] = dh_strdup("yellow");
+    Value* a3 = malloc(sizeof(Value));
+    *a3 = value_string("\x1b[33m");
+    ansi.v.map.vals[3] = a3;
+    ansi.v.map.keys[4] = dh_strdup("blue");
+    Value* a4 = malloc(sizeof(Value));
+    *a4 = value_string("\x1b[34m");
+    ansi.v.map.vals[4] = a4;
+    ansi.v.map.keys[5] = dh_strdup("magenta");
+    Value* a5 = malloc(sizeof(Value));
+    *a5 = value_string("\x1b[35m");
+    ansi.v.map.vals[5] = a5;
+    ansi.v.map.keys[6] = dh_strdup("cyan");
+    Value* a6 = malloc(sizeof(Value));
+    *a6 = value_string("\x1b[36m");
+    ansi.v.map.vals[6] = a6;
+    ansi.v.map.keys[7] = dh_strdup("bold");
+    Value* a7 = malloc(sizeof(Value));
+    *a7 = value_string("\x1b[1m");
+    ansi.v.map.vals[7] = a7;
+    env_set(e, "ansi", ansi);
 }
