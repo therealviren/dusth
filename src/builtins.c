@@ -11,6 +11,29 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+static int dh_truthy(const Value* v){
+    if(!v) return 0;
+    switch(v->type){
+        case V_NULL: return 0;
+        case V_BOOL: return v->v.b;
+        case V_INT: return v->v.i != 0;
+        case V_FLOAT: return v->v.f != 0.0;
+        case V_STRING: return v->v.s && v->v.s[0];
+        case V_LIST: return v->v.list.len != 0;
+        case V_MAP: return v->v.map.len != 0;
+        default: return 1;
+    }
+}
+
+static double dh_to_double(const Value* v){
+    if(!v) return 0.0;
+    if(v->type==V_FLOAT) return v->v.f;
+    if(v->type==V_INT) return (double)v->v.i;
+    if(v->type==V_BOOL) return (double)(v->v.b?1:0);
+    if(v->type==V_STRING) return atof(v->v.s);
+    return 0.0;
+}
+
 static Value bh_say(Env* env, Value* args, size_t argc){
     (void)env;
     for(size_t i=0;i<argc;i++){
@@ -34,6 +57,7 @@ static Value bh_len(Env* env, Value* args, size_t argc){
     if(argc<1) return value_int(0);
     if(args[0].type==V_STRING) return value_int((long long)strlen(args[0].v.s));
     if(args[0].type==V_LIST) return value_int((long long)args[0].v.list.len);
+    if(args[0].type==V_MAP) return value_int((long long)args[0].v.map.len);
     return value_int(0);
 }
 static Value bh_to_string(Env* env, Value* args, size_t argc){
@@ -50,6 +74,7 @@ static Value bh_to_int(Env* env, Value* args, size_t argc){
     if(args[0].type==V_INT) return value_int(args[0].v.i);
     if(args[0].type==V_FLOAT) return value_int((long long)args[0].v.f);
     if(args[0].type==V_STRING) return value_int((long long)atoll(args[0].v.s));
+    if(args[0].type==V_BOOL) return value_int(args[0].v.b?1:0);
     return value_int(0);
 }
 static Value bh_to_float(Env* env, Value* args, size_t argc){
@@ -58,6 +83,7 @@ static Value bh_to_float(Env* env, Value* args, size_t argc){
     if(args[0].type==V_FLOAT) return value_float(args[0].v.f);
     if(args[0].type==V_INT) return value_float((double)args[0].v.i);
     if(args[0].type==V_STRING) return value_float(atof(args[0].v.s));
+    if(args[0].type==V_BOOL) return value_float(args[0].v.b?1.0:0.0);
     return value_float(0.0);
 }
 static Value bh_type_of(Env* env, Value* args, size_t argc){
@@ -538,6 +564,468 @@ static Value bh_random(Env* env, Value* args, size_t argc){
     }
     return value_null();
 }
+
+static Value bh_int_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    return bh_to_int(env,args,argc);
+}
+static Value bh_float_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    return bh_to_float(env,args,argc);
+}
+static Value bh_str_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    return bh_to_string(env,args,argc);
+}
+static Value bh_bool_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_bool(0);
+    return value_bool(dh_truthy(&args[0]));
+}
+static Value bh_list_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    Value L = value_list();
+    for(size_t i=0;i<argc;i++){
+        Value* p = malloc(sizeof(Value));
+        if(!p) continue;
+        *p = value_clone(&args[i]);
+        Value** arr = realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ free(p); value_free(p); continue; }
+        L.v.list.items = arr;
+        L.v.list.items[L.v.list.len++] = p;
+    }
+    return L;
+}
+static Value bh_tuple_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    return bh_list_cast(env,args,argc);
+}
+static Value bh_dict_cast(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc==0) return value_map();
+    if(argc==1 && args[0].type==V_MAP) return value_clone(&args[0]);
+    return value_map();
+}
+static Value bh_chr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    if(args[0].type==V_INT){
+        int c=(int)args[0].v.i;
+        char s[2]={0,0};
+        s[0]=(char)c;
+        return value_string(s);
+    }
+    return value_string("");
+}
+static Value bh_ord(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_int(0);
+    if(args[0].type==V_STRING && args[0].v.s && args[0].v.s[0]) return value_int((long long)(unsigned char)args[0].v.s[0]);
+    return value_int(0);
+}
+static Value bh_hex(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    if(args[0].type==V_INT){
+        char* s = dh_from_int_hex(args[0].v.i);
+        Value r = value_string(s);
+        free(s);
+        return r;
+    }
+    return value_string("");
+}
+static Value bh_oct(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    if(args[0].type==V_INT){
+        char* s = dh_from_int_oct(args[0].v.i);
+        Value r = value_string(s);
+        free(s);
+        return r;
+    }
+    return value_string("");
+}
+static Value bh_bin(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    if(args[0].type==V_INT){
+        long long v=args[0].v.i;
+        char buf[66];
+        buf[65]=0;
+        for(int i=0;i<64;i++) buf[i]= '0';
+        int pos=64;
+        unsigned long long uv=(unsigned long long)v;
+        if(uv==0){ return value_string("0"); }
+        while(uv){
+            buf[--pos] = (uv & 1) ? '1' : '0';
+            uv >>= 1;
+        }
+        return value_string(buf+pos);
+    }
+    return value_string("");
+}
+
+static Value bh_repr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("null");
+    char* s=value_to_string(&args[0]);
+    Value r=value_string(s);
+    free(s);
+    return r;
+}
+static Value bh_ascii(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    char* s=value_to_string(&args[0]);
+    size_t L=strlen(s);
+    char* out=malloc(L*4+1);
+    size_t p=0;
+    for(size_t i=0;i<L;i++){
+        unsigned char c=(unsigned char)s[i];
+        if(c>=32 && c<127){ out[p++]=c; }
+        else { int n=sprintf(out+p,"\\x%02x",c); p+=n; }
+    }
+    out[p]=0;
+    Value r=value_string(out);
+    free(out);
+    free(s);
+    return r;
+}
+static Value bh_format(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_string("");
+    char* fmt=value_to_string(&args[0]);
+    char buf[4096];
+    if(argc==1){
+        snprintf(buf,sizeof(buf),"%s",fmt);
+    } else {
+        char* arg=value_to_string(&args[1]);
+        snprintf(buf,sizeof(buf),fmt,arg);
+        free(arg);
+    }
+    Value r=value_string(buf);
+    free(fmt);
+    return r;
+}
+static Value bh_divmod(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<2) return value_null();
+    if(args[0].type==V_INT && args[1].type==V_INT){
+        long long a=args[0].v.i;
+        long long b=args[1].v.i;
+        if(b==0) return value_list();
+        long long q=a/b;
+        long long r=a%b;
+        Value* qv=malloc(sizeof(Value));
+        Value* rv=malloc(sizeof(Value));
+        *qv=value_int(q);
+        *rv=value_int(r);
+        Value L=value_list();
+        L.v.list.items = malloc(sizeof(Value*)*2);
+        L.v.list.items[0]=qv;
+        L.v.list.items[1]=rv;
+        L.v.list.len=2;
+        L.v.list.cap=2;
+        return L;
+    }
+    double a=dh_to_double(&args[0]);
+    double b=dh_to_double(&args[1]);
+    if(b==0.0) return value_list();
+    double q=floor(a/b);
+    double r=a - b*q;
+    Value* qv=malloc(sizeof(Value));
+    Value* rv=malloc(sizeof(Value));
+    *qv=value_float(q);
+    *rv=value_float(r);
+    Value L=value_list();
+    L.v.list.items = malloc(sizeof(Value*)*2);
+    L.v.list.items[0]=qv;
+    L.v.list.items[1]=rv;
+    L.v.list.len=2;
+    L.v.list.cap=2;
+    return L;
+}
+static Value bh_sum(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_int(0);
+    if(args[0].type==V_LIST){
+        double acc=0.0;
+        int allint=1;
+        for(size_t i=0;i<args[0].v.list.len;i++){
+            Value* it=args[0].v.list.items[i];
+            if(it->type==V_INT) acc += (double)it->v.i;
+            else if(it->type==V_FLOAT) { acc += it->v.f; allint=0; }
+            else { allint=0; }
+        }
+        if(allint) return value_int((long long)acc);
+        return value_float(acc);
+    }
+    return value_int(0);
+}
+static Value bh_min(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc==0) return value_null();
+    if(argc==1 && args[0].type==V_LIST){
+        if(args[0].v.list.len==0) return value_null();
+        Value* first = args[0].v.list.items[0];
+        Value out = value_clone(first);
+        for(size_t i=1;i<args[0].v.list.len;i++){
+            Value* it=args[0].v.list.items[i];
+            if(it->type==V_INT && out.type==V_INT){
+                if(it->v.i < out.v.i){ value_free(&out); out = value_clone(it); }
+            } else {
+                double a= (out.type==V_FLOAT?out.v.f:(double)(out.type==V_INT?out.v.i:0));
+                double b= (it->type==V_FLOAT?it->v.f:(double)(it->type==V_INT?it->v.i:0));
+                if(b < a){ value_free(&out); out = value_clone(it); }
+            }
+        }
+        return out;
+    } else {
+        Value out = value_clone(&args[0]);
+        for(int i=1;i<(int)argc;i++){
+            Value cand=value_clone(&args[i]);
+            double a= (out.type==V_FLOAT?out.v.f:(double)(out.type==V_INT?out.v.i:0));
+            double b= (cand.type==V_FLOAT?cand.v.f:(double)(cand.type==V_INT?cand.v.i:0));
+            if(b < a){ value_free(&out); out = value_clone(&cand); }
+            value_free(&cand);
+        }
+        return out;
+    }
+}
+static Value bh_max(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc==0) return value_null();
+    if(argc==1 && args[0].type==V_LIST){
+        if(args[0].v.list.len==0) return value_null();
+        Value* first = args[0].v.list.items[0];
+        Value out = value_clone(first);
+        for(size_t i=1;i<args[0].v.list.len;i++){
+            Value* it=args[0].v.list.items[i];
+            if(it->type==V_INT && out.type==V_INT){
+                if(it->v.i > out.v.i){ value_free(&out); out = value_clone(it); }
+            } else {
+                double a= (out.type==V_FLOAT?out.v.f:(double)(out.type==V_INT?out.v.i:0));
+                double b= (it->type==V_FLOAT?it->v.f:(double)(it->type==V_INT?it->v.i:0));
+                if(b > a){ value_free(&out); out = value_clone(it); }
+            }
+        }
+        return out;
+    } else {
+        Value out = value_clone(&args[0]);
+        for(int i=1;i<(int)argc;i++){
+            Value cand=value_clone(&args[i]);
+            double a= (out.type==V_FLOAT?out.v.f:(double)(out.type==V_INT?out.v.i:0));
+            double b= (cand.type==V_FLOAT?cand.v.f:(double)(cand.type==V_INT?cand.v.i:0));
+            if(b > a){ value_free(&out); out = value_clone(&cand); }
+            value_free(&cand);
+        }
+        return out;
+    }
+}
+static Value bh_all(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_bool(1);
+    if(args[0].type!=V_LIST) return value_bool(dh_truthy(&args[0]));
+    for(size_t i=0;i<args[0].v.list.len;i++){
+        if(!dh_truthy(args[0].v.list.items[i])) return value_bool(0);
+    }
+    return value_bool(1);
+}
+static Value bh_any(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_bool(0);
+    if(args[0].type!=V_LIST) return value_bool(dh_truthy(&args[0]));
+    for(size_t i=0;i<args[0].v.list.len;i++){
+        if(dh_truthy(args[0].v.list.items[i])) return value_bool(1);
+    }
+    return value_bool(0);
+}
+
+static Value bh_enumerate(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_list();
+    if(args[0].type!=V_LIST) return value_list();
+    Value L=value_list();
+    for(size_t i=0;i<args[0].v.list.len;i++){
+        Value* pair1=malloc(sizeof(Value));
+        Value* pair2=malloc(sizeof(Value));
+        *pair1 = value_int((long long)i);
+        *pair2 = value_clone(args[0].v.list.items[i]);
+        Value* item=malloc(sizeof(Value));
+        *item = value_list();
+        item->v.list.items = malloc(sizeof(Value*)*2);
+        item->v.list.items[0]=pair1;
+        item->v.list.items[1]=pair2;
+        item->v.list.len=2;
+        item->v.list.cap=2;
+        Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ value_free(item); free(item); continue; }
+        L.v.list.items=arr;
+        L.v.list.items[L.v.list.len++]=item;
+    }
+    return L;
+}
+static Value bh_zip(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc==0) return value_list();
+    size_t minlen = SIZE_MAX;
+    for(size_t k=0;k<argc;k++){
+        if(args[k].type!=V_LIST) return value_list();
+        if(minlen==SIZE_MAX) minlen = args[k].v.list.len;
+        else if(args[k].v.list.len < minlen) minlen = args[k].v.list.len;
+    }
+    Value L=value_list();
+    for(size_t i=0;i<minlen;i++){
+        Value* item=malloc(sizeof(Value));
+        *item = value_list();
+        item->v.list.items = malloc(sizeof(Value*)*argc);
+        item->v.list.len = argc;
+        item->v.list.cap = argc;
+        for(size_t k=0;k<argc;k++){
+            Value* e = malloc(sizeof(Value));
+            *e = value_clone(args[k].v.list.items[i]);
+            item->v.list.items[k]=e;
+        }
+        Value** arr=realloc(L.v.list.items,sizeof(Value*)*(L.v.list.len+1));
+        if(!arr){ value_free(item); free(item); continue; }
+        L.v.list.items=arr;
+        L.v.list.items[L.v.list.len++]=item;
+    }
+    return L;
+}
+static Value bh_reversed(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_list();
+    if(args[0].type!=V_LIST) return value_list();
+    Value L = value_clone(&args[0]);
+    for(size_t i=0;i<L.v.list.len/2;i++){
+        Value* a = L.v.list.items[i];
+        Value* b = L.v.list.items[L.v.list.len-1-i];
+        Value* tmp=a;
+        L.v.list.items[i]=b;
+        L.v.list.items[L.v.list.len-1-i]=tmp;
+    }
+    return L;
+}
+static int value_compare_for_sort(const void* A, const void* B){
+    Value* const * a = A;
+    Value* const * b = B;
+    double av = (*a)->type==V_FLOAT?(*a)->v.f:(double)((*a)->type==V_INT?(*a)->v.i:0);
+    double bv = (*b)->type==V_FLOAT?(*b)->v.f:(double)((*b)->type==V_INT?(*b)->v.i:0);
+    if(av < bv) return -1;
+    if(av > bv) return 1;
+    return 0;
+}
+static Value bh_sorted(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_list();
+    if(args[0].type!=V_LIST) return value_list();
+    Value L = value_clone(&args[0]);
+    qsort(L.v.list.items, L.v.list.len, sizeof(Value*), value_compare_for_sort);
+    return L;
+}
+
+static Value bh_callable(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_bool(0);
+    return value_bool(args[0].type==V_FUNC || args[0].type==V_NATIVE);
+}
+static Value bh_dir(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_list();
+    if(args[0].type==V_MAP){
+        return bh_keys(env,args,argc);
+    }
+    return value_list();
+}
+static Value bh_hasattr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<2) return value_bool(0);
+    if(args[0].type!=V_MAP||args[1].type!=V_STRING) return value_bool(0);
+    for(size_t i=0;i<args[0].v.map.len;i++){
+        if(strcmp(args[0].v.map.keys[i], args[1].v.s)==0) return value_bool(1);
+    }
+    return value_bool(0);
+}
+static Value bh_getattr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<2) return value_null();
+    if(args[0].type!=V_MAP||args[1].type!=V_STRING) return value_null();
+    for(size_t i=0;i<args[0].v.map.len;i++){
+        if(strcmp(args[0].v.map.keys[i], args[1].v.s)==0) return value_clone(args[0].v.map.vals[i]);
+    }
+    if(argc>=3) return value_clone(&args[2]);
+    return value_null();
+}
+static Value bh_setattr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<3) return value_bool(0);
+    if(args[0].type!=V_MAP||args[1].type!=V_STRING) return value_bool(0);
+    Value v = value_clone(&args[2]);
+    int found=0;
+    for(size_t i=0;i<args[0].v.map.len;i++){
+        if(strcmp(args[0].v.map.keys[i], args[1].v.s)==0){
+            value_free(args[0].v.map.vals[i]);
+            *args[0].v.map.vals[i] = value_clone(&v);
+            found=1;
+            break;
+        }
+    }
+    if(!found){
+        map_grow(&args[0]);
+        args[0].v.map.keys = realloc(args[0].v.map.keys, sizeof(char*)*(args[0].v.map.len+1));
+        args[0].v.map.vals = realloc(args[0].v.map.vals, sizeof(Value*)*(args[0].v.map.len+1));
+        args[0].v.map.keys[args[0].v.map.len] = dh_strdup(args[1].v.s);
+        Value* p=malloc(sizeof(Value));
+        *p = value_clone(&v);
+        args[0].v.map.vals[args[0].v.map.len] = p;
+        args[0].v.map.len++;
+    }
+    value_free(&v);
+    return value_bool(1);
+}
+static Value bh_delattr(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<2) return value_bool(0);
+    if(args[0].type!=V_MAP||args[1].type!=V_STRING) return value_bool(0);
+    for(size_t i=0;i<args[0].v.map.len;i++){
+        if(strcmp(args[0].v.map.keys[i], args[1].v.s)==0){
+            free(args[0].v.map.keys[i]);
+            value_free(args[0].v.map.vals[i]);
+            free(args[0].v.map.vals[i]);
+            for(size_t j=i+1;j<args[0].v.map.len;j++){
+                args[0].v.map.keys[j-1]=args[0].v.map.keys[j];
+                args[0].v.map.vals[j-1]=args[0].v.map.vals[j];
+            }
+            args[0].v.map.len--;
+            return value_bool(1);
+        }
+    }
+    return value_bool(0);
+}
+static Value bh_id(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<1) return value_int(0);
+    const void* p = (const void*)&args[0];
+    unsigned long long x = (unsigned long long)(uintptr_t)p;
+    return value_int((long long)x);
+}
+static Value bh_isinstance(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc<2) return value_bool(0);
+    if(args[1].type==V_STRING){
+        char* t = args[1].v.s;
+        Value typ = value_string(t);
+        Value tt = bh_type_of(NULL,&args[0],1);
+        int r = 0;
+        if(tt.type==V_STRING && strcmp(tt.v.s,t)==0) r=1;
+        value_free(&tt);
+        value_free(&typ);
+        return value_bool(r);
+    }
+    return value_bool(0);
+}
+
 void register_builtins(Env* e){
     env_set(e,"input", value_native(bh_input, "input"));
     env_set(e,"sh", value_native(bh_sh, "sh"));
@@ -601,6 +1089,40 @@ void register_builtins(Env* e){
     env_set(e,"keys",value_native(bh_keys,"keys"));
     env_set(e,"values",value_native(bh_values,"values"));
     env_set(e,"random", value_native(bh_random, "random"));
+    env_set(e,"int", value_native(bh_int_cast,"int"));
+    env_set(e,"float", value_native(bh_float_cast,"float"));
+    env_set(e,"str", value_native(bh_str_cast,"str"));
+    env_set(e,"bool", value_native(bh_bool_cast,"bool"));
+    env_set(e,"list", value_native(bh_list_cast,"list"));
+    env_set(e,"tuple", value_native(bh_tuple_cast,"tuple"));
+    env_set(e,"dict", value_native(bh_dict_cast,"dict"));
+    env_set(e,"chr", value_native(bh_chr,"chr"));
+    env_set(e,"ord", value_native(bh_ord,"ord"));
+    env_set(e,"hex", value_native(bh_hex,"hex"));
+    env_set(e,"oct", value_native(bh_oct,"oct"));
+    env_set(e,"bin", value_native(bh_bin,"bin"));
+    env_set(e,"repr", value_native(bh_repr,"repr"));
+    env_set(e,"ascii", value_native(bh_ascii,"ascii"));
+    env_set(e,"format", value_native(bh_format,"format"));
+    env_set(e,"divmod", value_native(bh_divmod,"divmod"));
+    env_set(e,"sum", value_native(bh_sum,"sum"));
+    env_set(e,"min", value_native(bh_min,"min"));
+    env_set(e,"max", value_native(bh_max,"max"));
+    env_set(e,"all", value_native(bh_all,"all"));
+    env_set(e,"any", value_native(bh_any,"any"));
+    env_set(e,"enumerate", value_native(bh_enumerate,"enumerate"));
+    env_set(e,"zip", value_native(bh_zip,"zip"));
+    env_set(e,"reversed", value_native(bh_reversed,"reversed"));
+    env_set(e,"sorted", value_native(bh_sorted,"sorted"));
+    env_set(e,"callable", value_native(bh_callable,"callable"));
+    env_set(e,"dir", value_native(bh_dir,"dir"));
+    env_set(e,"hasattr", value_native(bh_hasattr,"hasattr"));
+    env_set(e,"getattr", value_native(bh_getattr,"getattr"));
+    env_set(e,"setattr", value_native(bh_setattr,"setattr"));
+    env_set(e,"delattr", value_native(bh_delattr,"delattr"));
+    env_set(e,"id", value_native(bh_id,"id"));
+    env_set(e,"isinstance", value_native(bh_isinstance,"isinstance"));
+
     Value ansi = value_map();
     ansi.v.map.len = 8;
     ansi.v.map.cap = 8;
