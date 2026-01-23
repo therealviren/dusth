@@ -10,6 +10,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 
 static int dh_truthy(const Value* v){
     if(!v) return 0;
@@ -1026,6 +1027,29 @@ static Value bh_isinstance(Env* env, Value* args, size_t argc){
     return value_bool(0);
 }
 
+static Value bh_run_binary(Env* env, Value* args, size_t argc){
+    (void)env;
+    if(argc < 1 || args[0].type != V_STRING) return value_null();
+
+    const char* hex = args[0].v.s;
+    size_t len = strlen(hex) / 2;
+    if(len == 0) return value_null();
+
+    uint8_t* code = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC,
+                          MAP_ANON | MAP_PRIVATE, -1, 0);
+    if(code == MAP_FAILED) return value_null();
+    
+    for(size_t i = 0; i < len; i++){
+        sscanf(hex + 2*i, "%2hhx", &code[i]);
+    }
+    
+    void (*func)(void) = (void(*)(void))code;
+    func();
+
+    munmap(code, len);
+    return value_null();
+}
+
 void register_builtins(Env* e){
     env_set(e,"input", value_native(bh_input, "input"));
     env_set(e,"sh", value_native(bh_sh, "sh"));
@@ -1122,7 +1146,7 @@ void register_builtins(Env* e){
     env_set(e,"delattr", value_native(bh_delattr,"delattr"));
     env_set(e,"id", value_native(bh_id,"id"));
     env_set(e,"isinstance", value_native(bh_isinstance,"isinstance"));
-
+    env_set(e, "code", value_native(bh_run_binary, "code"));
     Value ansi = value_map();
     ansi.v.map.len = 8;
     ansi.v.map.cap = 8;
