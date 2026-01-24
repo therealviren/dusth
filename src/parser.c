@@ -164,39 +164,36 @@ static Node* parse_primary() {
 
     if (c == '"') {
         advance();
-
-        char* buf = safe_malloc(1);
+        size_t buf_size = 16;
         size_t len = 0;
-        buf[0] = 0;
-
+        char* buf = safe_malloc(buf_size);
         while (!is_at_end() && peek() != '"') {
             char ch = advance();
-
             if (ch == '\\') {
-                char e = advance();
-
-                if (e == 'n') ch = '\n';
-                else if (e == 't') ch = '\t';
-                else if (e == 'r') ch = '\r';
-                else if (e == '\\') ch = '\\';
-                else if (e == '"') ch = '"';
-                else if (e == 'x') {
+                char esc = advance();
+                if (esc == 'n') ch = '\n';
+                else if (esc == 't') ch = '\t';
+                else if (esc == 'r') ch = '\r';
+                else if (esc == '\\') ch = '\\';
+                else if (esc == '"') ch = '"';
+                else if (esc == 'x') {
                     char h1 = advance();
                     char h2 = advance();
                     char hex[3] = { h1, h2, 0 };
                     ch = (char)strtol(hex, NULL, 16);
                 } else {
-                    ch = e;
+                    ch = esc;
                 }
             }
-
-            buf = realloc(buf, len + 2);
+            if (len + 1 >= buf_size) {
+                buf_size *= 2;
+                buf = realloc(buf, buf_size);
+                if (!buf) error("Memory allocation failed");
+            }
             buf[len++] = ch;
-            buf[len] = 0;
         }
-
         expect_char('"', "Expected closing '\"'");
-
+        buf[len] = '\0';
         Node* node = new_node(NODE_LITERAL);
         node->text = buf;
         return node;
@@ -209,7 +206,7 @@ static Node* parse_primary() {
         return inner;
     }
 
-    if (isdigit((unsigned char)c)) {
+    if (isdigit((unsigned char)c) || (c == '.' && isdigit((unsigned char)parser.current[1]))) {
         const char* start = parser.current;
         while (isdigit((unsigned char)peek()) || peek() == '.') advance();
         Node* node = new_node(NODE_LITERAL);
@@ -235,75 +232,97 @@ static Node* make_call_node_from_expr(Node* callee) {
     return n;
 }
 
+static Node* make_call_node(Node* callee) {
+    Node* n = new_node(NODE_CALL);
+    add_child(n, callee);
+    return n;
+}
+
 static Node* parse_postfix(Node* left) {
-    for (;;) {
+    while (true) {
         skip_whitespace();
-        if (peek() == '[') {
+        char c = peek();
+
+        if (c == '[') {
             advance();
-            Node* idx = parse_expr();
+            Node* index = parse_expr();
             expect_char(']', "Expected ']'");
             Node* n = new_node(NODE_INDEX);
             add_child(n, left);
-            add_child(n, idx);
+            add_child(n, index);
             left = n;
             continue;
         }
-        if (peek() == '.' && parser.current[1] == '(') {
+
+        if (c == '(') {
             advance();
-            advance();
-            Node* call = make_call_node_from_expr(left);
+            Node* call = make_call_node(left);
             skip_whitespace();
-            if (peek() != ')') {
-                while (!is_at_end() && peek() != ')') {
-                    Node* arg = parse_expr();
-                    if (!arg) break;
-                    add_child(call, arg);
-                    skip_whitespace();
-                    if (!match_char(',')) break;
-                }
+            while (peek() != ')' && !is_at_end()) {
+                Node* arg = parse_expr();
+                if (!arg) break;
+                add_child(call, arg);
+                skip_whitespace();
+                match_char(',');
             }
             expect_char(')', "Expected ')'");
             left = call;
             continue;
         }
-        if (peek() == '(') {
-            advance();
-            Node* call = make_call_node_from_expr(left);
-            skip_whitespace();
-            if (peek() != ')') {
-                while (!is_at_end() && peek() != ')') {
-                    Node* arg = parse_expr();
-                    if (!arg) break;
-                    add_child(call, arg);
+
+        if (c == '.' && parser.current[1] != '\0') {
+            const char* name_start = parser.current + 1;
+            if (isalpha((unsigned char)parser.current[1]) || parser.current[1] == '_') {
+                parser.current++;
+                while (isalnum((unsigned char)peek()) || peek() == '_') advance();
+                Node* member = new_node(NODE_IDENT);
+                member->text = safe_strdup(name_start, parser.current - name_start);
+                Node* n = new_node(NODE_MEMBER);
+                add_child(n, left);
+                add_child(n, member);
+                left = n;
+
+                skip_whitespace();
+                if (peek() == '(') {
+                    advance();
+                    Node* call = make_call_node(left);
                     skip_whitespace();
-                    if (!match_char(',')) break;
+                    while (peek() != ')' && !is_at_end()) {
+                        Node* arg = parse_expr();
+                        if (!arg) break;
+                        add_child(call, arg);
+                        skip_whitespace();
+                        match_char(',');
+                    }
+                    expect_char(')', "Expected ')'");
+                    left = call;
                 }
+                continue;
             }
-            expect_char(')', "Expected ')'");
-            left = call;
-            continue;
         }
+
         break;
     }
     return left;
 }
 
 static Node* parse_primary_with_postfix() {
-    Node* p = parse_primary();
-    if (!p) return NULL;
-    return parse_postfix(p);
+    Node* primary = parse_primary();
+    if (!primary) return NULL;
+    return parse_postfix(primary);
 }
 
 static Node* parse_unary() {
+    skip_whitespace();
     if (match_char('-')) {
         Node* node = new_node(NODE_UNARY);
-        node->text = safe_strdup("-",1);
+        node->text = safe_strdup("-", 1);
         add_child(node, parse_unary());
         return node;
     }
     if (match_char('!')) {
         Node* node = new_node(NODE_UNARY);
-        node->text = safe_strdup("!",1);
+        node->text = safe_strdup("!", 1);
         add_child(node, parse_unary());
         return node;
     }
@@ -312,134 +331,152 @@ static Node* parse_unary() {
 
 static Node* parse_factor() {
     Node* left = parse_unary();
-    while (true) {
+    if (!left) return NULL;
+
+    for (;;) {
         skip_whitespace();
-        if (peek() == '*' && parser.current[1] != '=') {
+        char c = peek();
+        Node* n = NULL;
+
+        if (c == '*' && parser.current[1] != '=') {
             advance();
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("*",1);
-            add_child(n,left);
-            add_child(n,parse_unary());
-            left = n;
-        } else if (peek() == '/' && parser.current[1] != '=') {
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("*", 1);
+        } else if (c == '/' && parser.current[1] != '=') {
             advance();
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("/",1);
-            add_child(n,left);
-            add_child(n,parse_unary());
-            left = n;
-        } else break;
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("/", 1);
+        } else {
+            break;
+        }
+
+        add_child(n, left);
+        add_child(n, parse_unary());
+        left = n;
     }
+
     return left;
 }
 
 static Node* parse_term() {
     Node* left = parse_factor();
-    while (true) {
+    if (!left) return NULL;
+
+    for (;;) {
         skip_whitespace();
-        if (peek() == '+' && parser.current[1] != '=') {
+        char c = peek();
+        Node* n = NULL;
+
+        if (c == '+' && parser.current[1] != '=') {
             advance();
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("+",1);
-            add_child(n,left);
-            add_child(n,parse_factor());
-            left = n;
-        } else if (peek() == '-' && parser.current[1] != '=') {
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("+", 1);
+        } else if (c == '-' && parser.current[1] != '=') {
             advance();
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("-",1);
-            add_child(n,left);
-            add_child(n,parse_factor());
-            left = n;
-        } else break;
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("-", 1);
+        } else {
+            break;
+        }
+
+        add_child(n, left);
+        add_child(n, parse_factor());
+        left = n;
     }
+
     return left;
 }
 
 static Node* parse_comparison() {
     Node* left = parse_term();
-    skip_whitespace();
-    if (peek() == '+' && parser.current[1] == '=') {
-        advance(); advance();
-        Node* n = new_node(NODE_ASSIGN);
-        n->text = safe_strdup("+=",2);
-        add_child(n,left);
-        add_child(n,parse_expr());
-        left = n;
-    } else if (peek() == '-' && parser.current[1] == '=') {
-        advance(); advance();
-        Node* n = new_node(NODE_ASSIGN);
-        n->text = safe_strdup("-=",2);
-        add_child(n,left);
-        add_child(n,parse_expr());
-        left = n;
-    } else if (peek() == '*' && parser.current[1] == '=') {
-        advance(); advance();
-        Node* n = new_node(NODE_ASSIGN);
-        n->text = safe_strdup("*=",2);
-        add_child(n,left);
-        add_child(n,parse_expr());
-        left = n;
-    } else if (peek() == '/' && parser.current[1] == '=') {
-        advance(); advance();
-        Node* n = new_node(NODE_ASSIGN);
-        n->text = safe_strdup("/=",2);
-        add_child(n,left);
-        add_child(n,parse_expr());
-        left = n;
-    } else if (peek() == '%' && parser.current[1] == '=') {
-        advance(); advance();
-        Node* n = new_node(NODE_ASSIGN);
-        n->text = safe_strdup("%=",2);
-        add_child(n,left);
-        add_child(n,parse_expr());
-        left = n;
-    } else if (match_char('<')) {
-        Node* n = new_node(NODE_BINARY);
-        n->text = match_char('=')?safe_strdup("<=",2):safe_strdup("<",1);
-        add_child(n,left);
-        add_child(n,parse_term());
-        left = n;
-    } else if (match_char('>')) {
-        Node* n = new_node(NODE_BINARY);
-        n->text = match_char('=')?safe_strdup(">=",2):safe_strdup(">",1);
-        add_child(n,left);
-        add_child(n,parse_term());
-        left = n;
-    } else if (match_char('=')) {
-        if (match_char('=')) {
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("==",2);
-            add_child(n,left);
-            add_child(n,parse_term());
-            left = n;
+    if (!left) return NULL;
+
+    for (;;) {
+        skip_whitespace();
+        char c = peek();
+        Node* n = NULL;
+
+        if (c == '+' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("+=", 2);
+        } else if (c == '-' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("-=", 2);
+        } else if (c == '*' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("*=", 2);
+        } else if (c == '/' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("/=", 2);
+        } else if (c == '%' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("%=", 2);
+        } else if (c == '=' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("==", 2);
+        } else if (c == '=' ) {
+            advance();
+            n = new_node(NODE_ASSIGN);
+            n->text = safe_strdup("=", 1);
+        } else if (c == '!' && parser.current[1] == '=') {
+            advance(); advance();
+            n = new_node(NODE_BINARY);
+            n->text = safe_strdup("!=", 2);
+        } else if (c == '<') {
+            advance();
+            if (peek() == '=') {
+                advance();
+                n = new_node(NODE_BINARY);
+                n->text = safe_strdup("<=", 2);
+            } else {
+                n = new_node(NODE_BINARY);
+                n->text = safe_strdup("<", 1);
+            }
+        } else if (c == '>') {
+            advance();
+            if (peek() == '=') {
+                advance();
+                n = new_node(NODE_BINARY);
+                n->text = safe_strdup(">=", 2);
+            } else {
+                n = new_node(NODE_BINARY);
+                n->text = safe_strdup(">", 1);
+            }
         } else {
-            Node* n = new_node(NODE_ASSIGN);
-            n->text = safe_strdup("=",1);
-            add_child(n,left);
-            add_child(n,parse_expr());
-            left = n;
+            break;
         }
-    } else if (match_char('!')) {
-        if (match_char('=')) {
-            Node* n = new_node(NODE_BINARY);
-            n->text = safe_strdup("!=",2);
-            add_child(n,left);
-            add_child(n,parse_term());
-            left = n;
-        } else {
-        }
+
+        if (!n) break;
+        add_child(n, left);
+        add_child(n, parse_term());
+        left = n;
     }
+
     return left;
 }
 
-static Node* parse_expr() { return parse_comparison(); }
+static Node* parse_expr() {
+    return parse_comparison();
+}
 
 static Node* parse_block() {
-    expect_char('{',"Block must start with '{'");
+    expect_char('{', "Block must start with '{'");
     Node* block = new_node(NODE_BLOCK);
-    while (peek() != '}' && !is_at_end()) add_child(block,parse_stmt());
-    expect_char('}',"Block must end with '}'");
+
+    skip_whitespace();
+    while (!is_at_end() && peek() != '}') {
+        Node* stmt = parse_stmt();
+        if (stmt) add_child(block, stmt);
+        skip_whitespace();
+    }
+
+    expect_char('}', "Block must end with '}'");
     return block;
 }
 
@@ -447,24 +484,32 @@ static Node* parse_import() {
     skip_whitespace();
     if (peek() != '"') error("import expects a file string");
     advance();
+
     const char* start = parser.current;
     while (peek() != '"' && !is_at_end()) advance();
-    Node* n = new_node(NODE_IMPORT);
-    n->text = safe_strdup(start, parser.current - start);
+    if (is_at_end()) error("Unterminated import string");
+
+    Node* node = new_node(NODE_IMPORT);
+    node->text = safe_strdup(start, parser.current - start);
+
     expect_char('"', "Unterminated import string");
     match_char(';');
-    return n;
+
+    return node;
 }
 
 static Node* parse_function() {
     skip_whitespace();
     Node* node = new_node(NODE_FUNC);
+
     const char* start = parser.current;
     while (isalnum((unsigned char)peek()) || peek() == '_') advance();
     if (start == parser.current) error("Function must have a name");
     node->text = safe_strdup(start, parser.current - start);
+
     skip_whitespace();
     expect_char('(', "Function parameters must start with '('");
+
     if (peek() != ')') {
         do {
             skip_whitespace();
@@ -476,22 +521,28 @@ static Node* parse_function() {
             add_child(node, arg);
         } while(match_char(','));
     }
+
     expect_char(')', "Function parameters must end with ')'");
+
     skip_whitespace();
     Node* body = parse_block();
     add_child(node, body);
+
     return node;
 }
 
 static Node* parse_extern() {
     skip_whitespace();
     Node* node = new_node(NODE_EXTERN);
+
     const char* start = parser.current;
-    while (isalnum((unsigned char)peek())||peek()=='_') advance();
+    while (isalnum((unsigned char)peek()) || peek() == '_') advance();
     if (start == parser.current) error("Extern must have a name");
     node->text = safe_strdup(start, parser.current - start);
+
     skip_whitespace();
     expect_char('(', "Extern parameters must start with '('");
+
     if (peek() != ')') {
         do {
             skip_whitespace();
@@ -503,66 +554,69 @@ static Node* parse_extern() {
             add_child(node, arg);
         } while(match_char(','));
     }
+
     expect_char(')', "Extern parameters must end with ')'");
     match_char(';');
+
     return node;
 }
 
 static Node* parse_stmt() {
     skip_whitespace();
     if (is_at_end()) return NULL;
+
     Node* node = NULL;
+
     if (match_keyword("let")) {
         node = new_node(NODE_LET);
         skip_whitespace();
         const char* start = parser.current;
-        while (isalnum((unsigned char)peek())||peek()=='_') advance();
+        while (isalnum((unsigned char)peek()) || peek() == '_') advance();
         if (start == parser.current) error("Expected variable name after let");
-        node->text = safe_strdup(start, parser.current-start);
+        node->text = safe_strdup(start, parser.current - start);
         skip_whitespace();
-        expect_char('=',"Expected '=' after variable name");
-        add_child(node,parse_expr());
+        expect_char('=', "Expected '=' after variable name");
+        add_child(node, parse_expr());
     } else if (match_keyword("if")) {
         skip_whitespace();
-        Node* cond = NULL;
+        Node* condition = NULL;
         if (peek() == '(') {
             advance();
-            cond = parse_expr();
+            condition = parse_expr();
             expect_char(')', "if expects ')'");
         } else {
-            cond = parse_expr();
-            if (!cond) error("if expects a condition");
+            condition = parse_expr();
+            if (!condition) error("if expects a condition");
         }
-        Node* thenb = parse_block();
+        Node* then_block = parse_block();
         Node* n = new_node(NODE_IF);
-        add_child(n, cond);
-        add_child(n, thenb);
+        add_child(n, condition);
+        add_child(n, then_block);
+
         skip_whitespace();
         if (match_keyword("else")) {
             skip_whitespace();
+            Node* else_node = NULL;
             if (peek() == '{') {
-                Node* elseb = parse_block();
-                add_child(n, elseb);
+                else_node = parse_block();
             } else {
-                Node* elseStmt = parse_stmt();
-                if (elseStmt) add_child(n, elseStmt);
+                else_node = parse_stmt();
             }
+            if (else_node) add_child(n, else_node);
         }
+
         node = n;
     } else if (match_keyword("while")) {
         skip_whitespace();
-        if (peek() == '(') {
-            advance();
-            Node* cond = parse_expr();
-            expect_char(')', "while expects ')'");
-            Node* body = parse_block();
-            Node* n = new_node(NODE_LOOP);
-            add_child(n, cond);
-            add_child(n, body);
-            node = n;
-        } else {
-            error("while expects '('");
-        }
+        if (peek() != '(') error("while expects '('");
+        advance();
+        Node* condition = parse_expr();
+        expect_char(')', "while expects ')'");
+        Node* body = parse_block();
+        Node* n = new_node(NODE_LOOP);
+        add_child(n, condition);
+        add_child(n, body);
+        node = n;
     } else if (match_keyword("return")) {
         Node* n = new_node(NODE_RETURN);
         skip_whitespace();
@@ -575,25 +629,38 @@ static Node* parse_stmt() {
             add_child(node, expr);
         }
     }
+
     skip_whitespace();
     match_char(';');
+
     return node;
 }
 
 Node* parse_program(const char* src) {
     signal(SIGINT, handle_interrupt);
+
     parser.start = src;
     parser.current = src;
+
     Node* program = new_node(NODE_PROGRAM);
+
     skip_whitespace();
     while (!is_at_end()) {
         Node* n = NULL;
-        if (match_keyword("import")) n = parse_import();
-        else if (match_keyword("fn")) n = parse_function();
-        else if (match_keyword("extern")) n = parse_extern();
-        else n = parse_stmt();
+
+        if (match_keyword("import")) {
+            n = parse_import();
+        } else if (match_keyword("fn")) {
+            n = parse_function();
+        } else if (match_keyword("extern")) {
+            n = parse_extern();
+        } else {
+            n = parse_stmt();
+        }
+
         if (n) add_child(program, n);
         skip_whitespace();
     }
+
     return program;
 }
