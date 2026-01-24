@@ -1,0 +1,6 @@
+fn main() {
+let name = input("Enter your name: ");
+say("Hello " + name + "!");
+}
+
+main()
