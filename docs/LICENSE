@@ -1,0 +1,98 @@
+END USER LICENSE AGREEMENT (EULA) FOR THE SOFTWARE
+DEVELOPED AND OWNED BY VIREN SAHTI
+IMPORTANT — READ CAREFULLY: This End User License Agreement (“Agreement”, “EULA”) is a legally binding contract between you (an individual or legal entity, “Licensee”, “You”) and Viren Sahti (“Licensor”, “Author”, “Developer”). By clicking “I Agree”, installing, downloading, copying, running, activating, using, or otherwise interacting with the Software in any way, you acknowledge that you have read, understand, and agree to be bound by the terms and conditions below. If you do not agree, do not use the Software and immediately delete all copies.
+SECTION 1 — DEFINITIONS, SCOPE, AND INTERPRETATION
+1.1 Definitions.
+“Software” means, without limitation, all computer programs, source code (if included), object code, libraries, modules, executables, plug-ins, packages, scripts, installer programs, documentation, manuals, help files, metadata, updates, patches, example code, demonstrations, sample data, user interfaces, and any derivative work, modification or enhancement thereof that is provided by Licensor.
+“Use” or “Using” means to load, install, store, execute, display, view, transmit, back up, or otherwise operate the Software on any device, environment, cloud, virtual machine or platform.
+“Effective Date” means the date and time of your first interaction with the Software (installation, download, or execution).
+“You/Your/Licensee” includes any natural person, corporation, partnership, limited liability company, trust, or other legal entity that accepts this Agreement.
+1.2 Scope. This Agreement governs all access to and use of the Software by Licensee, whether provided at no charge or for a fee, and whether provided in source or binary form. Unless expressly stated otherwise in writing by Licensor, no other rights are granted.
+1.3 Interpretation. Headings are for convenience and do not affect interpretation. “Includes” and “including” are non-exhaustive. If any term is ambiguous, the interpretation that favors Licensor will control to the fullest extent permitted by applicable law.
+SECTION 2 — LICENSE GRANT
+2.1 Limited License. Subject to Licensee’s full compliance with this Agreement, Licensor grants Licensee a personal, non-exclusive, non-transferable, non-sublicensable, revocable license to use the Software solely for Licensee’s internal purposes and consistent with any documentation provided by Licensor.
+2.2 License Restrictions. Licensee shall not, nor permit any third party to:
+a) copy, reproduce, distribute, or publicly display the Software except as expressly permitted;
+b) modify, translate, adapt, alter, or create derivative works of the Software;
+c) decompile, disassemble, reverse engineer, or otherwise attempt to derive the source code of the Software (except to the extent such restriction is unenforceable under applicable law);
+d) remove, obscure, or alter any proprietary notices, labels or marks included with the Software;
+e) use the Software to provide services to third parties (e.g., hosting, multi-tenant services) unless explicitly authorized in writing by Licensor;
+f) circumvent technical protections or attempt to defeat licensing or copy protections.
+2.3 No Transfer. The License is personal to Licensee and may not be sold, assigned, transferred, pledged, or otherwise conveyed without Licensor’s prior written consent. Any attempted transfer shall be void.
+SECTION 3 — ACCEPTANCE, INSTALLATION, AND UPDATES
+3.1 Acceptance. Licensee accepts this Agreement by (a) clicking “I Agree” (where presented), (b) installing, downloading, or using the Software, or (c) executing any binary or script supplied as the Software.
+3.2 Updates and Patches. Licensor may provide updates, patches, or new releases (“Updates”) at its discretion. Updates may be subject to additional terms and/or this Agreement as updated. Licensee agrees that Licensor may automatically apply Updates. Licensor has no obligation to provide Updates, maintenance, support, or new features unless specifically agreed in writing.
+3.3 Third-Party Components. The Software may include or be accompanied by third-party components (including open-source software) governed by separate licenses. Licensee agrees to comply with those licenses. Where required, Licensor will provide notices and source or license terms for open-source components.
+SECTION 4 — WARRANTY DISCLAIMER — “SUPER HUMAN SHIELD”
+4.1 AS-IS. THE SOFTWARE IS PROVIDED “AS IS”, “AS AVAILABLE”, AND WITH ALL FAULTS. LICENSOR MAKES NO REPRESENTATIONS OR WARRANTIES OF ANY KIND, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, QUIET ENJOYMENT, TITLE, OR NON-INFRINGEMENT.
+4.2 NO GUARANTEES. LICENSOR DOES NOT WARRANT THAT (A) THE SOFTWARE WILL MEET LICENSEE’S REQUIREMENTS; (B) THE SOFTWARE WILL BE COMPATIBLE WITH ANY PARTICULAR HARDWARE OR ENVIRONMENT; (C) ACCESS WILL BE UNINTERRUPTED OR ERROR-FREE; OR (D) ALL DEFECTS OR SECURITY VULNERABILITIES WILL BE CORRECTED.
+4.3 NO DATA WARRANTY. LICENSOR DISCLAIMS ANY WARRANTY REGARDING THE ACCURACY, COMPLETENESS, OR RELIABILITY OF ANY DATA PROCESSED, GENERATED, OR CONTAINED IN OR BY THE SOFTWARE.
+4.4 SOME JURISDICTIONS. Certain jurisdictions may not allow disclaimers of implied warranties; in such case, those disclaimers shall apply to the maximum extent permitted by law.
+SECTION 5 — LIMITATION OF LIABILITY — THE ZERO DOLLAR RULE
+5.1 ABSOLUTE LIMIT. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, LICENSOR’S AGGREGATE LIABILITY TO LICENSEE OR ANY THIRD PARTY FOR ALL CLAIMS ARISING FROM OR RELATING TO THIS AGREEMENT OR THE SOFTWARE SHALL BE LIMITED TO ZERO DOLLARS ($0.00) OR THE MINIMUM AMOUNT REQUIRED BY APPLICABLE LAW, WHICHEVER IS GREATER.
+5.2 NO CONSEQUENTIAL DAMAGES. IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, PUNITIVE, OR CONSEQUENTIAL DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, LOSS OF REVENUE, LOSS OF GOODWILL, LOSS OF DATA, BUSINESS INTERRUPTION, COMPUTER DAMAGE, OR PERSONAL INJURY, EVEN IF LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+5.3 LICENSEE ASSUMES RISK. LICENSEE ACKNOWLEDGES THAT USE OF THE SOFTWARE IS AT LICENSEE’S SOLE RISK, AND LICENSEE IS RESPONSIBLE FOR BACKUPS, DATA INTEGRITY, AND THE SECURITY OF ITS SYSTEMS.
+5.4 EXCEPTIONS. Where applicable law prohibits exclusion or limitation of liability for gross negligence, willful misconduct, or personal injury, such exclusions do not apply to the extent prohibited; however, Licensor’s liability shall remain limited to the smallest monetary value permitted by law.
+SECTION 6 — INTELLECTUAL PROPERTY RIGHTS
+6.1 Ownership. The Software is licensed, not sold. Licensor retains all right, title, and interest in and to the Software, including all intellectual property rights worldwide. No ownership rights are transferred to Licensee under this Agreement.
+6.2 Proprietary Notices. Licensee shall not remove or alter any proprietary notices, copyright, trademark, or other intellectual property legends contained within the Software.
+6.3 Reverse Engineering. Licensee agrees not to reverse engineer, decompile, disassemble, or attempt to derive the source code or trade secrets of the Software, except as expressly permitted by applicable law.
+6.4 Feedback. If Licensee provides feedback, suggestions, bug reports, or other input regarding the Software, Licensee hereby grants Licensor a perpetual, irrevocable, transferable, sublicensable, royalty-free worldwide license to use, reproduce, modify, implement, and otherwise exploit such feedback for any purpose without obligation to Licensee.
+SECTION 7 — INDEMNIFICATION AND DEFENSE
+7.1 Indemnity by Licensee. Licensee shall indemnify, defend, and hold harmless Licensor and its affiliates, officers, agents, and employees from and against any and all claims, liabilities, losses, damages, costs and expenses (including reasonable attorneys’ fees) arising out of or related to: (a) Licensee’s breach of this Agreement; (b) Licensee’s use of the Software; (c) Licensee’s violation of any law or third-party right; or (d) any content uploaded, processed, or transmitted by Licensee via the Software.
+7.2 Procedure. Licensor will (a) promptly notify Licensee of any claim for which indemnity is sought (provided failure to give notice does not relieve Licensee of obligations except to the extent prejudiced), (b) allow Licensee to control the defense and settlement of such claim, and (c) reasonably cooperate at Licensee’s expense.
+SECTION 8 — WAIVER OF LITIGATION & CLASS ACTION WAIVER
+8.1 Waiver of Litigation. TO THE MAXIMUM EXTENT PERMITTED BY LAW, BY ACCEPTING THIS AGREEMENT LICENSEE IRREVOCABLY WAIVES ANY RIGHT TO INITIATE OR PARTICIPATE IN LITIGATION AGAINST LICENSOR IN ANY COURT IN ANY JURISDICTION TO THE EXTENT SUCH WAIVER IS ENFORCEABLE UNDER APPLICABLE LAW.
+8.2 Class Action Waiver. LICENSEE AGREES THAT ANY CLAIMS OR DISPUTES WILL BE BROUGHT ON AN INDIVIDUAL BASIS ONLY AND NOT AS A CLASS, COLLECTIVE, OR REPRESENTATIVE ACTION. LICENSEE WAIVES ANY RIGHT TO PARTICIPATE IN CLASS OR COLLECTIVE PROCEEDINGS.
+SECTION 9 — GOVERNING LAW, JURISDICTION & ARBITRATION
+9.1 Governing Law. This Agreement shall be governed by the laws of the jurisdiction chosen by Licensor (subject to mandatory local consumer protection laws).
+9.2 Arbitration. Except where prohibited by law, any dispute, claim or controversy arising out of or relating to this Agreement or the breach, termination, enforcement, interpretation or validity thereof shall be finally resolved by confidential binding arbitration administered under the rules chosen by Licensor. The arbitrator’s award shall be final and binding, and judgment on the award may be entered in any court having jurisdiction.
+9.3 Location. The place of arbitration, venue, and procedural rules shall be as determined by Licensor unless otherwise agreed.
+9.4 Small Claims. Nothing prevents Licensee from bringing a claim in small claims court for disputes within that court’s jurisdictional limits.
+SECTION 10 — FORCE MAJEURE
+10.1 No Liability for Events Beyond Control. Licensor shall not be liable for failure to perform obligations under this Agreement to the extent such failure results from causes beyond Licensor’s reasonable control, including but not limited to acts of God, natural disasters, war, terrorism, civil unrest, governmental actions, pandemics, strikes, supply-chain failures, power loss, network outages, hardware failures, solar flares, or other events of force majeure.
+10.2 Performance Suspension. Licensor may suspend performance for the duration of such events and will use reasonable efforts to resume performance as soon as practicable.
+SECTION 11 — DATA, PRIVACY, AND SECURITY
+11.1 Data Processing. If the Software collects, processes, stores, or transmits personal data, such processing will be subject to Licensor’s privacy practices and applicable data protection laws. Licensee is responsible for ensuring that its use of the Software complies with privacy laws and for obtaining any necessary consents from data subjects.
+11.2 No Liability for Network/ISP. Licensor is not responsible for any data transmission costs, ISP policies, or any interception of data by third parties. Licensee is responsible for secure configuration, backups, and access control.
+11.3 Security. Licensor attempts to design the Software to be secure; however, Licensee acknowledges that no software is entirely secure. Licensor disclaims all liability for unauthorized access, breaches, or data loss arising from Licensee’s use, configuration choices, or the environment in which the Software is deployed.
+11.4 EU / GDPR. Where applicable, Licensor and Licensee may need a separate data processing agreement to govern GDPR obligations. This Agreement does not substitute for a data processing agreement when required by law.
+SECTION 12 — EXPORT CONTROL AND COMPLIANCE
+12.1 Compliance. Licensee shall comply with all applicable export control laws and regulations and shall not export, re-export or transfer the Software in violation of any applicable laws or regulations.
+12.2 Sanctions. Licensee represents that it is not located in, under the control of, or a national or resident of any country or person subject to trade or economic sanctions.
+SECTION 13 — SUPPORT, MAINTENANCE & DOCUMENTATION
+13.1 No Obligation to Support. Unless expressly agreed in writing, Licensor has no obligation to provide technical support, maintenance, or updates.
+13.2 Optional Support. Any support, maintenance or consultancy provided may be subject to separate terms and fees.
+13.3 Documentation. Documentation, if any, is provided “as is” and may be updated or changed without notice.
+SECTION 14 — TERMINATION; SURVIVAL
+14.1 Termination for Cause. Licensor may terminate this Agreement and revoke the license immediately upon notice if Licensee breaches any term of this Agreement.
+14.2 Effect of Termination. Upon termination, Licensee must cease all use of the Software, destroy all copies (including backups), and certify destruction upon request. Sections concerning Intellectual Property, Warranty Disclaimer, Limitation of Liability, Indemnification, Confidentiality, and any other provisions which by their nature survive termination shall continue in force.
+14.3 Remedies. Termination shall be without prejudice to any other rights or remedies Licensor may have under law or equity.
+SECTION 15 — CONFIDENTIALITY
+15.1 Confidential Information. Each party may disclose Confidential Information to the other. Confidential Information includes non-public technical, business, or financial information. Licensee will keep Licensor’s Confidential Information secret and use it only to exercise rights under this Agreement.
+15.2 Permitted Disclosures. Disclosure required by law or to enforce rights under this Agreement is permitted, provided reasonable notice is given where lawful.
+SECTION 16 — THIRD-PARTY SOFTWARE AND OPEN SOURCE
+16.1 Open Source Notices. Portions of the Software may be subject to open-source licenses (e.g., MIT, Apache, GPL). Those components remain subject to their respective licenses and Licensee’s use must comply accordingly.
+16.2 No Warranty on Third-Party Code. Licensor disclaims all warranties for third-party components except as provided by their respective licensors.
+SECTION 17 — ASSIGNMENT
+17.1 No Assignment by Licensee. Licensee may not assign or transfer this Agreement or rights hereunder without Licensor’s express written consent.
+17.2 Assignment by Licensor. Licensor may assign or transfer this Agreement in whole or in part to an affiliate or successor.
+SECTION 18 — NOTICES
+18.1 How Notices Are Given. Notices to Licensor or Licensee shall be in writing and sent via email or postal mail to the contact information provided. Notices are effective upon receipt.
+18.2 Contact for Licensor. Unless otherwise specified, contact Licensor at the email or address provided with the Software distribution or at the contact details below.
+SECTION 19 — SEVERABILITY; REFORMATION; ENTIRE AGREEMENT
+19.1 Severability. If any provision of this Agreement is held unenforceable or invalid, the provision will be interpreted to the maximum extent permitted and the remainder of the Agreement will remain in full force and effect.
+19.2 Reformation. If any clause is found unenforceable, the parties agree to negotiate in good faith to replace it with a term that is enforceable and closely reflects the original intent.
+19.3 Entire Agreement. This Agreement constitutes the entire agreement between Licensee and Licensor regarding the Software and supersedes all prior or contemporaneous agreements, proposals, or communications.
+SECTION 20 — MISCELLANEOUS
+20.1 No Partnership. Nothing in this Agreement creates a partnership, joint venture, employment, or agency relationship between the parties.
+20.2 Equitable Relief. Licensee acknowledges that breach of the Intellectual Property provisions may cause irreparable harm and that Licensor may seek injunctive relief in addition to other remedies.
+20.3 No Waiver. Failure to enforce any right is not a waiver of that right.
+20.4 Language. The controlling language of this Agreement is English. Any translations are for convenience only.
+SECTION 21 — MINORS AND LEGAL CAPACITY
+21.1 Legal Capacity. By accepting this Agreement, Licensee represents that it has the legal capacity to enter into agreements. If Licensee is a minor or lacks capacity, acceptance must be by a parent or legal guardian.
+SECTION 22 — ACKNOWLEDGMENT AND ACCEPTANCE
+BY INSTALLING, COPYING, OR USING THE SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS AGREEMENT, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS. IF YOU DO NOT AGREE WITH THESE TERMS, DO NOT INSTALL, COPY, OR USE THE SOFTWARE AND DELETE ALL COPIES IMMEDIATELY.
+CONTACT INFORMATION
+If you have questions regarding this EULA, or wish to contact Licensor for permissions, notices, or other matters, please use the contact details supplied with the Software distribution or the contact points provided by Licensor.
+END OF AGREEMENT
