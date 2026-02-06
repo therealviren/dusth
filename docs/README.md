@@ -1,4 +1,4 @@
-![Dusth Logo](assets/logo.png)
+![Dusth Logo](/assets/logo.png)
 # Dusth
 
 **Dusth** is a lightweight, powerful scripting language designed for clear syntax, dynamic execution, and efficient runtime performance. It provides a robust platform for defining functions, manipulating data structures, and performing computational tasks in a straightforward and maintainable way.
