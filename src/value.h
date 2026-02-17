@@ -65,4 +65,9 @@ Value value_clone(const Value* v);
 void value_free(Value* v);
 char* value_to_string(const Value* v);
 
+int list_append(Value* list, const Value* v);
+Value list_pop(Value* list, long long index);
+int map_set(Value* map, const char* key, const Value* v);
+int map_get(const Value* map, const char* key, Value* out);
+
 #endif

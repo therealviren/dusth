@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
-static void list_grow(Value* list) {
+static void list_internal_grow(Value* list) {
     if (!list) return;
     if (list->v.list.len + 1 <= list->v.list.cap) return;
     size_t old = list->v.list.cap;
@@ -49,6 +49,7 @@ Value value_string(const char* s) {
     Value v;
     v.type = V_STRING;
     v.v.s = dh_strdup(s ? s : "");
+    if (!v.v.s) v.type = V_NULL;
     return v;
 }
 
@@ -70,9 +71,7 @@ Value value_list_from_array(Value** items, size_t n) {
     if (n == 0) return v;
     size_t need = n;
     Value **new_items = calloc(need, sizeof(Value*));
-    if (!new_items) {
-        return v;
-    }
+    if (!new_items) return v;
     for (size_t i = 0; i < n; ++i) new_items[i] = NULL;
     for (size_t i = 0; i < n; ++i) {
         Value *elem = malloc(sizeof(Value));
@@ -101,6 +100,10 @@ Value value_native(NativeFn fn, const char* name) {
     v.type = V_NATIVE;
     v.v.native.fn = fn;
     v.v.native.name = dh_strdup(name ? name : "native");
+    if (!v.v.native.name) {
+        v.type = V_NULL;
+        v.v.native.fn = NULL;
+    }
     return v;
 }
 
@@ -286,6 +289,7 @@ void value_free(Value* v) {
     switch (v->type) {
         case V_STRING:
             if (v->v.s) free(v->v.s);
+            v->v.s = NULL;
             break;
         case V_LIST:
             if (v->v.list.items) {
@@ -398,4 +402,80 @@ char* value_to_string(const Value* v) {
         default:
             return dh_strdup("<unknown>");
     }
+}
+
+int list_append(Value* list, const Value* v) {
+    if (!list || list->type != V_LIST) return 0;
+    list_internal_grow(list);
+    Value* p = malloc(sizeof(Value));
+    if (!p) return 0;
+    *p = value_clone(v);
+    list->v.list.items[list->v.list.len++] = p;
+    return 1;
+}
+
+Value list_pop(Value* list, long long index) {
+    Value out = value_null();
+    if (!list || list->type != V_LIST) return out;
+    if (list->v.list.len == 0) return out;
+    long long idx = index;
+    if (idx < 0) idx = (long long)list->v.list.len - 1;
+    if (idx < 0 || (size_t)idx >= list->v.list.len) return out;
+    Value* item = list->v.list.items[idx];
+    if (!item) return out;
+    out = value_clone(item);
+    value_free(item);
+    free(item);
+    for (size_t i = (size_t)idx + 1; i < list->v.list.len; ++i) list->v.list.items[i-1] = list->v.list.items[i];
+    list->v.list.len--;
+    if (list->v.list.len == 0) {
+        free(list->v.list.items);
+        list->v.list.items = NULL;
+        list->v.list.cap = 0;
+    }
+    return out;
+}
+
+int map_set(Value* map, const char* key, const Value* v) {
+    if (!map || map->type != V_MAP || !key) return 0;
+    for (size_t i = 0; i < map->v.map.len; ++i) {
+        if (map->v.map.keys[i] && strcmp(map->v.map.keys[i], key) == 0) {
+            if (map->v.map.vals[i]) {
+                value_free(map->v.map.vals[i]);
+                *map->v.map.vals[i] = value_clone(v);
+            } else {
+                Value* val = malloc(sizeof(Value));
+                if (!val) return 0;
+                *val = value_clone(v);
+                map->v.map.vals[i] = val;
+            }
+            return 1;
+        }
+    }
+    map_grow(map);
+    size_t idx = map->v.map.len;
+    if (map->v.map.cap == 0) return 0;
+    char* kdup = dh_strdup(key);
+    if (!kdup) return 0;
+    Value* val = malloc(sizeof(Value));
+    if (!val) { free(kdup); return 0; }
+    *val = value_clone(v);
+    map->v.map.keys[idx] = kdup;
+    map->v.map.vals[idx] = val;
+    map->v.map.len++;
+    return 1;
+}
+
+int map_get(const Value* map, const char* key, Value* out) {
+    if (!map || map->type != V_MAP || !key || !out) return 0;
+    for (size_t i = 0; i < map->v.map.len; ++i) {
+        if (map->v.map.keys[i] && strcmp(map->v.map.keys[i], key) == 0) {
+            if (map->v.map.vals[i]) {
+                *out = value_clone(map->v.map.vals[i]);
+                return 1;
+            }
+            break;
+        }
+    }
+    return 0;
 }

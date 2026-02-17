@@ -60,7 +60,7 @@ void env_free(Env* e) {
     free(e);
 }
 
-int env_set_local(Env* e, const char* name, Value v) {
+static int env_set_local(Env* e, const char* name, Value v) {
     if (!e || !name) return 0;
     if (!env_ensure_capacity(e)) return 0;
     char* dup = dh_strdup(name);

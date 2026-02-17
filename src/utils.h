@@ -11,7 +11,7 @@ char* dh_from_double(double v);
 char* dh_from_int(long long v);
 char* dh_from_int_hex(long long v);
 char* dh_from_int_oct(long long v);
-char* dh_now_iso();
+char* dh_now_iso(void);
 char* read_file_to_string(const char* path);
 int write_string_to_file(const char* path, const char* content);
 void map_grow(Value* map);
